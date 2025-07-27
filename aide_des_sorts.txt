@@ -1,0 +1,21 @@
+🌟 Grimoire Magique – Aide des Sorts
+
+Ce grimoire contient 2 types de magie :
+
+🎲 Sorts fictifs (JdR)
+→ Voir le fichier : aide_sorts_jdr.txt
+
+🌙 Sorts wiccans réels
+→ Voir le fichier : aide_sorts_wiccans.txt
+
+⚠️ À savoir :
+Les sorts wiccans sont issus de croyances réelles.
+Utilise-les avec respect et bienveillance.
+
+📚 Liens utiles :
+- World of Amulets : https://fr.worldofamulets.com
+- Occitanie Livre : https://www.occitanielivre.fr/parutions/le-grand-livre-des-correspondances
+
+💡 Ouvre ces fichiers depuis le menu du grimoire.
+Que la magie t’accompagne ✨
+
