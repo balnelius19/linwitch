@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Tarot Mystique
+Comment=Tirage divinatoire et sauvegarde automatique
+Exec=/home/vboxuser/Desktop/002_tarot/tarot.py
+Icon=/home/vboxuser/Desktop/002_tarot/tarot.png
+Terminal=false
+Categories=Utility;
+StartupNotify=true
