@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu de Bataille</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+    }
+    .card {
+      font-size: 1.2em;
+      margin: 10px;
+    }
+    #result {
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🃏 Jeu de Bataille (32 cartes)</h1>
+  <div id="tour">Tour : 0</div>
+  <div class="card" id="joueur1Card">Joueur 1 : </div>
+  <div class="card" id="joueur2Card">Joueur 2 : </div>
+  <div id="result"></div>
+  <button onclick="jouerTour()">Jouer un tour</button>
+  <div id="score"></div>
+
+  <script>
+    const valeurs = ['7', '8', '9', '10', 'Valet', 'Dame', 'Roi', 'As'];
+    const couleurs = ['♠', '♥', '♦', '♣'];
+    const force = {
+      '7': 0, '8': 1, '9': 2, '10': 3,
+      'Valet': 4, 'Dame': 5, 'Roi': 6, 'As': 7
+    };
+
+    let paquet = [];
+    valeurs.forEach(valeur => {
+      couleurs.forEach(couleur => {
+        paquet.push({ nom: `${valeur} de ${couleur}`, valeur });
+      });
+    });
+
+    paquet = paquet.sort(() => Math.random() - 0.5);
+    let joueur1 = paquet.slice(0, 16);
+    let joueur2 = paquet.slice(16);
+    let tour = 0;
+
+    function jouerTour() {
+      if (joueur1.length === 0 || joueur2.length === 0 || tour >= 1000) {
+        document.getElementById("result").textContent =
+          joueur1.length > joueur2.length ? "🏆 Joueur 1 gagne la partie !" :
+          joueur2.length > joueur1.length ? "🏆 Joueur 2 gagne la partie !" :
+          "🤝 Match nul !";
+        return;
+      }
+
+      tour++;
+      document.getElementById("tour").textContent = `Tour : ${tour}`;
+
+      const c1 = joueur1.shift();
+      const c2 = joueur2.shift();
+
+      document.getElementById("joueur1Card").textContent = `Joueur 1 : ${c1.nom}`;
+      document.getElementById("joueur2Card").textContent = `Joueur 2 : ${c2.nom}`;
+
+      if (force[c1.valeur] > force[c2.valeur]) {
+        document.getElementById("result").textContent = "→ Joueur 1 gagne le pli";
+        joueur1.push(c1, c2);
+      } else if (force[c1.valeur] < force[c2.valeur]) {
+        document.getElementById("result").textContent = "→ Joueur 2 gagne le pli";
+        joueur2.push(c1, c2);
+      } else {
+        document.getElementById("result").textContent = "→ Bataille !";
+        bataille([c1, c2]);
+      }
+
+      document.getElementById("score").textContent =
+        `Cartes restantes - Joueur 1 : ${joueur1.length} | Joueur 2 : ${joueur2.length}`;
+    }
+
+    function bataille(pile) {
+      if (joueur1.length < 2 || joueur2.length < 2) {
+        document.getElementById("result").textContent = "Un joueur n'a plus assez de cartes pour la bataille.";
+        return;
+      }
+
+      pile.push(joueur1.shift(), joueur2.shift());
+      const c1 = joueur1.shift();
+      const c2 = joueur2.shift();
+
+      document.getElementById("joueur1Card").textContent = `Joueur 1 : ${c1.nom}`;
+      document.getElementById("joueur2Card").textContent = `Joueur 2 : ${c2.nom}`;
+
+      if (force[c1.valeur] > force[c2.valeur]) {
+        document.getElementById("result").textContent = "→ Joueur 1 gagne la bataille";
+        joueur1.push(...pile, c1, c2);
+      } else if (force[c1.valeur] < force[c2.valeur]) {
+        document.getElementById("result").textContent = "→ Joueur 2 gagne la bataille";
+        joueur2.push(...pile, c1, c2);
+      } else {
+        document.getElementById("result").textContent = "→ Nouvelle bataille !";
+        pile.push(c1, c2);
+        bataille(pile);
+      }
+    }
+  </script>
+</body>
+</html>
+

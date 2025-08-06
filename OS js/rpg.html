@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mini RPG Textuel</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #222; color: #eee; padding: 20px; }
+    h1 { color: #f0c040; }
+    button { margin-top: 10px; padding: 10px 20px; font-size: 16px; }
+    #log { white-space: pre-line; margin-top: 20px; background: #333; padding: 15px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>⚔️ Mini RPG Textuel</h1>
+  <button onclick="nextTurn()">Lancer une quête</button>
+  <div id="log"></div>
+
+  <script>
+    const quests = [
+      { title: "Sauver le village des gobelins", reward: p => p.hp += 10 },
+      { title: "Trouver l’amulette perdue", reward: p => p.force += 3 },
+      { title: "Protéger le marchand", reward: p => p.defense += 2 },
+      { title: "Explorer les ruines anciennes", reward: p => { p.hp += 5; p.force += 1; } }
+    ];
+
+    const enemies = [
+      { name: "Gobelin", force: 5, defense: 2, hp: 20 },
+      { name: "Orc", force: 8, defense: 4, hp: 30 },
+      { name: "Squelette", force: 6, defense: 3, hp: 25 },
+      { name: "Dragonnet", force: 10, defense: 6, hp: 40 }
+    ];
+
+    let player = { name: "Héros", force: 7, defense: 3, hp: 35 };
+    let tour = 0;
+    let record = 0;
+    const log = document.getElementById("log");
+
+    function calculateDamage(attacker, defender) {
+      const base = attacker.force - defender.defense;
+      return Math.max(1, base + Math.floor(Math.random() * 5));
+    }
+
+    function fight(enemy) {
+      let output = `⚔️ Combat contre ${enemy.name} !\n`;
+      while (player.hp > 0 && enemy.hp > 0) {
+        const playerHit = calculateDamage(player, enemy);
+        enemy.hp -= playerHit;
+        output += `${player.name} inflige ${playerHit} dégâts. ${enemy.name} a ${enemy.hp} HP.\n`;
+
+        if (enemy.hp <= 0) break;
+
+        const enemyHit = calculateDamage(enemy, player);
+        player.hp -= enemyHit;
+        output += `${enemy.name} riposte avec ${enemyHit} dégâts. ${player.name} a ${player.hp} HP.\n`;
+      }
+      return { victory: player.hp > 0, text: output };
+    }
+
+    function nextTurn() {
+      if (player.hp <= 0) {
+        log.textContent += `💀 Game Over. Tu as survécu ${tour} tour(s).\n`;
+        if (tour > record) {
+          record = tour;
+          log.textContent += `🏆 Nouveau record : ${record} tour(s) !\n`;
+        } else {
+          log.textContent += `📊 Record actuel : ${record} tour(s).\n`;
+        }
+        return;
+      }
+
+      tour++;
+      const quest = quests[Math.floor(Math.random() * quests.length)];
+      let enemy;
+      if (quest.title.includes("gobelins")) enemy = enemies[0];
+      else if (quest.title.includes("orc")) enemy = enemies[1];
+      else enemy = enemies[Math.floor(Math.random() * enemies.length)];
+
+      log.textContent += `\n🎲 Tour ${tour}\n📜 Quête : ${quest.title}\n`;
+
+      const result = fight({ ...enemy });
+      log.textContent += result.text;
+
+      if (result.victory) {
+        log.textContent += `✅ Quête réussie !\n`;
+        quest.reward(player);
+      } else {
+        log.textContent += `❌ Quête échouée...\n`;
+      }
+    }
+  </script>
+</body>
+</html>
+
