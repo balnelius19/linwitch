@@ -27,10 +27,10 @@ LinWitch est encore en phase de gestation. Il contient déjà plusieurs composan
 
 ## 🔍 Fichiers oraculaires
 
-En dehors du dossier principal, deux fichiers HTML servent de portails spécifiques :
+En dehors du fichier principal , deux fichiers HTML servent de portails spécifiques :
 
-- 🌙 `oracle1.html` : interface pour l’oracle lunaire  
-- ☀️ `oracle2.html` : interface pour l’oracle solaire
+- 🌙 `oracle1.html` : interface pour l’oracle en mot simple
+- ☀️ `oracle2.html` : interface pour l’oracle en phrases
 
 > Ces fichiers peuvent être ouverts directement dans un navigateur pour tester les modules oraculaires.
 
