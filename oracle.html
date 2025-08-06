@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Oracle Linwitch</title>
+  <style>
+    body {
+      background: #1e1e2f;
+      color: #f0e6ff;
+      font-family: 'Georgia', serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .oracle-container {
+      text-align: center;
+      background: #2e2e3f;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #8a2be2;
+      max-width: 400px;
+    }
+
+    button {
+      background: #8a2be2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 1.2em;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #a060ff;
+    }
+
+    .resultat {
+      margin-top: 30px;
+      font-size: 1.4em;
+    }
+  </style>
+</head>
+<body>
+  <div class="oracle-container">
+    <h1>🔮 Oracle Linwitch</h1>
+    <button onclick="tirerOracle()">Tirer les mots</button>
+    <div id="resultat" class="resultat"></div>
+  </div>
+
+  <script>
+    const motsMagiques = [
+      "Racines", "Étincelle", "Flux", "Murmure", "Voile", "Éclat", "Tissage", "Réseau",
+      "Légèreté", "Gardien", "Présence", "Purification", "Reflet", "Passage", "Sagesse",
+      "Cycle", "Écho", "Chemin", "Alignement", "Vie", "Guide", "Éveil", "Savoir", "Pause",
+      "Croissance", "Vigilance", "Temps", "Force", "Mystère", "Lien", "Message",
+      "Destinée", "Présage"
+    ];
+
+    function tirerOracle() {
+      const tirage = Math.floor(Math.random() * 3) + 1;
+      const tirés = [];
+
+      while (tirés.length < tirage) {
+        const mot = motsMagiques[Math.floor(Math.random() * motsMagiques.length)];
+        if (!tirés.includes(mot)) {
+          tirés.push(mot);
+        }
+      }
+
+      const resultatDiv = document.getElementById("resultat");
+      resultatDiv.innerHTML = tirés.map(mot => `✨ ${mot}`).join("<br>");
+    }
+  </script>
+</body>
+</html>
+
