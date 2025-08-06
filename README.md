@@ -22,6 +22,10 @@ LinWitch est encore en phase de gestation. Il contient déjà plusieurs composan
 - 🖼️ `sorciere.png` : illustration mystique
 - 📅 `fetes.json` & `solstices-data.js` : données calendaires occultes
 - 🧪 `index.html` : portail principal du grimoire
+- 🔮 `oracle.html` : un oracle supplémentaire
+- 🔮 `oracle2.html` : un oracle supplémentaire
+- 🌌 `pong.html` : un jeu pong
+  et bien d'autres petits logiciels dont un de phytothérapie 
 
 ---
 
