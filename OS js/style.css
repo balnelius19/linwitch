@@ -19,6 +19,25 @@ h1 {
   text-shadow: 0 0 5px #ba55d3;
 }
 
+h2{
+	text-align:center;
+	color: #ba2291;
+}
+
+h3{
+	text-align:center;
+	color:grey;
+}
+
+a{
+	display:inline-block;
+	text-decoration:none;
+	padding:5px;
+	border-radius:10px;
+	background-color:orange;
+	margin-bottom:15px;
+}
+
 #linwitch-buttons{
 display:flex;
 flex-direction:column;
@@ -49,6 +68,14 @@ section {
   border: 1px dashed #444;
   border-radius: 8px;
   background-color: rgba(30, 30, 30, 0.8);
+  display:flex;
+  flex-direction:row;
+}
+article{
+	margin:15px 5px;
+	padding:5px 4px;
+	box-shadow: 5px 5px 7px green;
+	width:28%;
 }
 
 /* 🧙 ASCII Sorcière en bas (option alternative) */
@@ -61,3 +88,19 @@ section {
   line-height: 1.1;
 }
 
+#sort-nom,
+#sort-description {
+  height: 40px; /* même hauteur */
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#sort-nom{
+  width: 50%;
+  margin-left: 25%;
+  margin-bottom:15px;
+}
