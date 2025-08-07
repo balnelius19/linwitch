@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Oracle Divinatoire</title>
+  <style>
+    body {
+      background: linear-gradient(to right, #1e3c72, #2a5298);
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 600px;
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+    }
+
+    h1 {
+      font-size: 2em;
+      margin-bottom: 20px;
+    }
+
+    #oracle {
+      font-size: 1.5em;
+      margin: 20px 0;
+      min-height: 60px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 1.1em;
+      background-color: #f39c12;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 5px;
+    }
+
+    button:hover {
+      background-color: #e67e22;
+    }
+
+    #history {
+      margin-top: 20px;
+      font-size: 1em;
+      text-align: left;
+    }
+
+    .disabled {
+      background-color: #999 !important;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔮 Oracle Divinatoire</h1>
+    <p id="oracle">Clique sur le bouton pour révéler ton message...</p>
+    <button id="oracleBtn" onclick="generateOracle()">✨ Tirer une phrase</button>
+    <button onclick="downloadHistory()">📁 Télécharger l’historique</button>
+    <div id="history"></div>
+  </div>
+
+  <script>
+    const subjects = [
+      { text: "Le vent", plural: false }, { text: "La lumière", plural: false },
+      { text: "Les étoiles", plural: true }, { text: "Le silence", plural: false },
+      { text: "Les murmures", plural: true }, { text: "La nuit", plural: false },
+      { text: "Les ombres", plural: true }, { text: "Le feu", plural: false },
+      { text: "La mémoire", plural: false }, { text: "Les secrets", plural: true },
+      { text: "Le destin", plural: false }, { text: "Les voix", plural: true },
+      { text: "La pluie", plural: false }, { text: "Les cris", plural: true },
+      { text: "Le doute", plural: false }, { text: "La beauté", plural: false },
+      { text: "Les reflets", plural: true }, { text: "Le rêve", plural: false },
+      { text: "Les souffles", plural: true }, { text: "La peur", plural: false }
+    ];
+
+    const verbs = {
+      singular: [
+        "apaise", "révèle", "nourrit", "embrasse", "ignore", "transforme", "dévoile", "choisit", "protège", "traverse",
+        "célèbre", "observe", "accueille", "libère", "déchire", "honore", "cherche", "trouve", "perd", "suit",
+        "fuit", "construit", "dépasse", "sent", "écoute", "oublie", "rêve", "saisit", "couvre", "éclaire", "inspire", "défie", "absorbe"
+      ],
+      plural: [
+        "apaisent", "révèlent", "nourrissent", "embrassent", "ignorent", "transforment", "dévoilent", "choisissent", "protègent", "traversent",
+        "célèbrent", "observent", "accueillent", "libèrent", "déchirent", "honorent", "cherchent", "trouvent", "perdent", "suivent",
+        "fuient", "construisent", "dépassent", "sentent", "écoutent", "oublient", "rêvent", "saisissent", "couvrent", "éclairent", "inspirent", "défient", "absorbent"
+      ]
+    };
+
+    const complements = [
+      "la douleur", "la peur", "le rêve", "le passé", "la beauté", "le chaos", "la sagesse", "le souffle", "le cri", "le doute",
+      "l’amour", "le mystère", "la vérité", "les étoiles", "la mémoire", "les ombres", "le silence", "le feu", "la lumière", "le destin",
+      "les murmures", "la nuit", "les secrets", "le vent", "la voix", "l’instant", "le chemin", "la pluie", "les reflets", "le présent",
+      "la force", "le désir", "l’écho"
+    ];
+
+    function getRandom(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function generateOracle() {
+      const usage = JSON.parse(localStorage.getItem("oracleUsage")) || { count: 0, lastReset: Date.now() };
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+
+      if (now - usage.lastReset > oneDay) {
+        usage.count = 0;
+        usage.lastReset = now;
+      }
+
+      if (usage.count >= 3) {
+        document.getElementById("oracle").textContent = "⛔ Limite atteinte : 3 tirages par 24h.";
+        document.getElementById("oracleBtn").classList.add("disabled");
+        return;
+      }
+
+      const subject = getRandom(subjects);
+      const verb = subject.plural ? getRandom(verbs.plural) : getRandom(verbs.singular);
+      const complement = getRandom(complements);
+      const phrase = `${subject.text} ${verb} ${complement}.`;
+
+      document.getElementById("oracle").textContent = phrase;
+
+      usage.count++;
+      localStorage.setItem("oracleUsage", JSON.stringify(usage));
+
+      const history = JSON.parse(localStorage.getItem("oracleHistory")) || [];
+      history.push({ phrase, date: new Date().toLocaleDateString("fr-FR") + ", " + new Date().toLocaleTimeString("fr-FR") });
+      localStorage.setItem("oracleHistory", JSON.stringify(history));
+      updateHistory();
+    }
+
+    function updateHistory() {
+      const history = JSON.parse(localStorage.getItem("oracleHistory")) || [];
+      const container = document.getElementById("history");
+      container.innerHTML = "<h3>📝 Historique des tirages :</h3><ul>" +
+        history.slice(-5).reverse().map(item => `<li>${item.date} — ${item.phrase}</li>`).join("") +
+        "</ul>";
+    }
+
+    function checkLimit() {
+      const usage = JSON.parse(localStorage.getItem("oracleUsage")) || { count: 0, lastReset: Date.now() };
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+
+      if (now - usage.lastReset > oneDay) {
+        usage.count = 0;
+        usage.lastReset = now;
+        localStorage.setItem("oracleUsage", JSON.stringify(usage));
+      }
+
+      if (usage.count >= 3) {
+        document.getElementById("oracleBtn").classList.add("disabled");
+        document.getElementById("oracle").textContent = "⛔ Limite atteinte : 3 tirages par 24h.";
+      }
+    }
+
+    function downloadHistory() {
+      const history = JSON.parse(localStorage.getItem("oracleHistory")) || [];
+      if (history.length === 0) {
+        alert("Aucun tirage enregistré.");
+        return;
+      }
+           const grouped = {};
+      history.forEach(item => {
+        const date = item.date.split(",")[0].trim();
+        if (!grouped[date]) grouped[date] = [];
+        grouped[date].push(item.phrase);
+      });
+      
+            let content = "📜 Journal des tirages divinatoires\n\n";
+      for (const date in grouped) {
+        content += `📅 ${date}\n`;
+        grouped[date].forEach((phrase, index) => {
+          content += `  ${index + 1}. ${phrase}\n`;
+        });
+        content += "\n";
+      }
+
+      content += "🔮 Que les étoiles te guident à jamais.\n";
+
+      const today = new Date().toISOString().split("T")[0];
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `oracle_${today}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Initialisation
+    updateHistory();
+    checkLimit();
+  </script>
+</body>
+</html>
+

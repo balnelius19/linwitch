@@ -1,0 +1,8 @@
+Package: linwitch
+Version: 1.0
+Section: base
+Priority: optional
+Architecture: all
+Maintainer: jose <balnelius19@gmail.com>
+Description: Lanceur du grimoire magique via Midori
+

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Fichier de lancement de l'OS simulé Linwitch">
+  <meta http-equiv="content-language" content="fr">
+  <meta name="author" content="José Rosso">
+  <meta name="robots" content="index, follow">
+  <title>Linwitch OS - Portail magique</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>🔮 Bienvenue dans Linwitch OS</h1>
+
+  <!-- 🔘 Boutons d'accès aux utilitaires -->
+  <section id="linwitch-buttons">
+    <button onclick="ouvrirGrimoire()">📖 Sorts & Grimoire</button>
+    <button onclick="ouvrirCalendrier()">🗓️ Calendrier Lunisolaire</button>
+    <button onclick="lancerTarot()">🔮 Tireur de Tarot</button>
+    <button onclick="consulterOracle()">👁️ L’Oracle</button>
+  </section>
+
+  <!-- 📖 Grimoire -->
+  <section id="grimoire-section" style="display:none;">
+    <h2>📖 Ton Grimoire magique</h2>
+    <input type="text" id="sort-nom" placeholder="Nom du sort">
+    <textarea id="sort-description" placeholder="Description du sort"></textarea>
+    <button onclick="enregistrerSort()">Enregistrer</button>
+    <ul id="liste-des-sorts"></ul>
+  </section>
+
+
+<!-- 🗓️ Calendrier lunisolaire -->
+<section id="calendrier-section" style="display: none;">
+  <h2>🌙 Calendrier Lunisolaire</h2>
+
+  <!-- Chargement ou message d'attente -->
+  <div id="calendrier-info">🔄 Chargement des phases lunaires et événements...</div>
+
+  <!-- Phases lunaires à venir -->
+  <div id="phase-lunaire" class="bloc-lunaire"></div>
+
+  <!-- Fêtes religieuses et mystiques -->
+  <div id="compte-a-rebours" class="bloc-fetes"></div>
+</section>
+
+
+<!-- 🔮 Tireur de tarot -->
+<section id="tarot-section" style="display:none;">
+  <h2>🔮 Tirage de Tarot</h2>
+
+  <button onclick="tirerCarte()">Tirer une carte</button>
+  <button onclick="tirerTroisCartes()">Tirage 3 cartes : Passé – Présent – Futur</button>
+
+  <!-- Résultat du tirage simple -->
+  <div id="carte-resultat" style="margin-top:20px;"></div>
+
+  <!-- Résultat du tirage triple -->
+  <div id="trois-cartes-resultat" style="margin-top:20px;"></div>
+  
+  <button onclick="tirerDouzeCartes()">Tirage en 12 cartes</button>
+  <div id="tarot-12-resultat" style="margin-top:20px;"></div>
+</section>
+
+  <!-- 👁️ Oracle -->
+  <section id="oracle-section" style="display:none;">
+    <h2>👁️ Pose ta question à l’Oracle</h2>
+    <input type="text" id="question-oracle" placeholder="Ta question secrète...">
+    <button onclick="interrogerOracle()">Consulter</button>
+    <div id="oracle-reponse"></div>
+  </section>
+  <script src="oracleMystique.js"></script>
+  <script src="tarot.js"></script>
+  <script src="solstices-data.js"></script>
+  <script src="linwitch.js"></script>
+</body>
+</html>
+

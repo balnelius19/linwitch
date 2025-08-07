@@ -1,0 +1,106 @@
+/* 🌑 Fond général */
+body {
+  background-image: url("sorciere.png");
+  color: #cfcfcf;
+  font-family: 'Courier New', monospace;
+  margin: 0;
+  padding: 20px;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* 🧙‍♀️ Titre principal */
+h1 {
+  color: #ba55d3;
+  text-align: center;
+  margin-bottom: 30px;
+  text-shadow: 0 0 5px #ba55d3;
+}
+
+h2{
+	text-align:center;
+	color: #ba2291;
+}
+
+h3{
+	text-align:center;
+	color:grey;
+}
+
+a{
+	display:inline-block;
+	text-decoration:none;
+	padding:5px;
+	border-radius:10px;
+	background-color:orange;
+	margin-bottom:15px;
+}
+
+#linwitch-buttons{
+display:flex;
+flex-direction:column;
+}
+
+/* 🎛️ Boutons magiques */
+button {
+  background-color: #222;
+  color: #fff;
+  border: 1px solid #ba55d3;
+  padding: 20px 40px;
+  margin: 20px;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 5px;
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #ba55d3;
+  color: #000;
+}
+
+/* 📦 Sections */
+section {
+  margin-top: 30px;
+  padding: 20px;
+  border: 1px dashed #444;
+  border-radius: 8px;
+  background-color: rgba(30, 30, 30, 0.8);
+  display:flex;
+  flex-direction:row;
+}
+article{
+	margin:15px 5px;
+	padding:5px 4px;
+	box-shadow: 5px 5px 7px green;
+	width:28%;
+}
+
+/* 🧙 ASCII Sorcière en bas (option alternative) */
+#ascii-witch {
+  white-space: pre;
+  text-align: center;
+  color: #666;
+  margin-top: 40px;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+#sort-nom,
+#sort-description {
+  height: 40px; /* même hauteur */
+  padding: 8px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+#sort-nom{
+  width: 50%;
+  margin-left: 25%;
+  margin-bottom:15px;
+}

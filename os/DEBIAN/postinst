@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+echo "🔧 Installation du lanceur Linwitch..."
+
+# 📁 Copie des fichiers vers /opt/linwitch
+INSTALL_DIR="/opt/linwitch"
+mkdir -p "$INSTALL_DIR"
+cp -r "$(dirname "$0")/../OS js" "$INSTALL_DIR"
+
+# 🔍 Vérification de Midori
+if ! command -v midori >/dev/null 2>&1; then
+    echo "⚠️ Midori n'est pas installé."
+    read -p "Souhaitez-vous l'installer maintenant ? [O/n] " REPLY
+    if [[ "$REPLY" =~ ^[Oo]$ || -z "$REPLY" ]]; then
+        echo "📦 Installation de Midori..."
+        sudo apt update && sudo apt install -y midori
+    else
+        echo "🚫 Midori ne sera pas installé. Le lanceur ne fonctionnera pas sans navigateur."
+    fi
+else
+    echo "✅ Midori est déjà installé."
+fi
+
+# 🌐 Chemin vers index.html
+INDEX_PATH="file://$INSTALL_DIR/OS js/index.html"
+
+# 📂 Création du dossier autostart
+AUTOSTART_DIR="$HOME/.config/autostart"
+mkdir -p "$AUTOSTART_DIR"
+
+# 🧾 Création du fichier .desktop
+cat > "$AUTOSTART_DIR/linwitch.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Exec=midori -e fullscreen "$INDEX_PATH"
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Linwitch
+Comment=Lance le grimoire magique au démarrage
+EOF
+
+echo "✅ Fichier .desktop créé dans $AUTOSTART_DIR"
+echo "🎉 Installation terminée !"
+

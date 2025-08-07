@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Les 4 Destins - Jeu Divinatoire</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #fdf6f0;
+      color: #333;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #b33;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    #tirage {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .ascii-card {
+      background: #fff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px;
+      margin: 10px;
+      width: 120px;
+      height: 100px;
+      white-space: pre;
+      font-size: 14px;
+      line-height: 1.2em;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+    }
+    .red {
+      color: #c00;
+    }
+    .black {
+      color: #000;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      white-space: pre-wrap;
+    }
+    #countdown {
+      margin-top: 10px;
+      color: #555;
+    }
+    #history {
+      white-space: pre-wrap;
+      text-align: left;
+      max-width: 600px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔮 Les 4 Destins</h1>
+  <p>Tire 4 cartes pour découvrir ton Amour, Argent, Chance et Énergie.</p>
+  <button onclick="tirerCartes()">Tirer les cartes</button>
+  <button onclick="telechargerHistorique()">📁 Télécharger tirages (.txt)</button>
+  <div id="tirage"></div>
+  <div id="result"></div>
+  <div id="countdown"></div>
+  <div id="history"></div>
+
+  <script>
+    const couleurs = {
+      '♥': 'Amour',
+      '♦': 'Argent',
+      '♣': 'Chance',
+      '♠': 'Énergie'
+    };
+
+    let tirages = [];
+    let tiragesRestants = 5;
+    let prochainJour = new Date();
+    prochainJour.setHours(24, 0, 0, 0); // minuit
+
+    function tirerCartes() {
+      if (tiragesRestants <= 0) {
+        document.getElementById("result").textContent = "⏳ Tu as atteint la limite de 5 tirages aujourd’hui.";
+        return;
+      }
+
+      const tirage = [];
+      for (let symbole in couleurs) {
+        const valeur = Math.floor(Math.random() * 12) + 1;
+        tirage.push({ couleur: symbole, domaine: couleurs[symbole], valeur });
+      }
+
+      tirages.push({ date: new Date().toLocaleString(), cartes: tirage });
+      tiragesRestants--;
+
+      afficherTirage(tirage);
+      afficherHistorique();
+    }
+
+    function afficherTirage(cartes) {
+      const tirageDiv = document.getElementById("tirage");
+      tirageDiv.innerHTML = "";
+
+      let interprétation = "";
+      let recap = "🃏 Cartes tirées :\n";
+
+      cartes.forEach(carte => {
+        const colorClass = (carte.couleur === '♥' || carte.couleur === '♦') ? 'red' : 'black';
+        const ascii = `
+┌────────────┐
+│ ${carte.valeur.toString().padEnd(2)}         │
+│            │
+│     ${carte.couleur}      │
+│            │
+│         ${carte.valeur.toString().padStart(2)} │
+└────────────┘`;
+
+        const cardDiv = document.createElement("div");
+        cardDiv.className = `ascii-card ${colorClass}`;
+        cardDiv.textContent = ascii;
+        tirageDiv.appendChild(cardDiv);
+
+        interprétation += `${carte.domaine} (${carte.couleur}) : ${interpretation(carte.valeur)}\n`;
+        recap += `- ${carte.valeur} de ${carte.couleur} (${carte.domaine})\n`;
+      });
+
+      document.getElementById("result").textContent = interprétation + "\n" + recap;
+    }
+
+    function interpretation(valeur) {
+      if (valeur <= 3) return "Faible énergie";
+      if (valeur <= 6) return "Équilibre instable";
+      if (valeur <= 9) return "Bonne dynamique";
+      return "Puissance maximale";
+    }
+
+    function afficherHistorique() {
+      let texte = tirages.map(t => {
+        let lignes = t.cartes.map(c => `- ${c.valeur} de ${c.couleur} (${c.domaine})`);
+        return `🕒 ${t.date}\n${lignes.join('\n')}`;
+      }).join('\n\n');
+      document.getElementById("history").textContent = texte;
+    }
+
+    function telechargerHistorique() {
+      let contenu = tirages.map(t => {
+        let lignes = t.cartes.map(c => `- ${c.valeur} de ${c.couleur} (${c.domaine})`);
+        return `🕒 ${t.date}\n${lignes.join('\n')}`;
+      }).join('\n\n');
+
+      const blob = new Blob([contenu], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "tirages.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function updateCountdown() {
+      const now = new Date();
+      const diff = Math.max(0, Math.floor((prochainJour - now) / 1000));
+      const heures = Math.floor(diff / 3600);
+      const minutes = Math.floor((diff % 3600) / 60);
+      const secondes = diff % 60;
+      document.getElementById("countdown").textContent =
+        `⏳ Prochain tirage disponible dans : ${heures}h ${minutes}m ${secondes}s`;
+
+      if (diff === 0) {
+        tiragesRestants = 5;
+        prochainJour = new Date();
+        prochainJour.setHours(24, 0, 0, 0);
+      }
+    }
+
+    setInterval(updateCountdown, 1000);
+  </script>
+</body>
+</html>
+

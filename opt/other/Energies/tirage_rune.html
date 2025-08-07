@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tirage de Runes</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 20px; background: #f4f4f4; }
+    h1 { text-align: center; }
+    .rune { background: #fff; margin: 10px 0; padding: 10px; border-left: 4px solid #444; }
+    button { padding: 10px 15px; margin: 10px 5px 20px 0; font-size: 16px; }
+    .disabled { background: #ccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>🔮 Tirage de 3 Runes</h1>
+  <button id="tirer" onclick="tirage()">Tirer</button>
+  <button id="exporter" onclick="exporter()" disabled>📄 Exporter</button>
+  <div id="resultat"></div>
+
+  <script>
+    const runes = [
+      { nom: "Fehu", pos: "Richesse, gains.", neg: "Perte, instabilité.", bon: true },
+      { nom: "Uruz", pos: "Force, santé.", neg: "Faiblesse, confusion.", bon: true },
+      { nom: "Thurisaz", pos: "Protection, transformation.", neg: "Conflit, impulsivité.", bon: false },
+      { nom: "Ansuz", pos: "Communication, sagesse.", neg: "Silence, doute.", bon: true },
+      { nom: "Raidho", pos: "Voyage, évolution.", neg: "Retard, stagnation.", bon: true },
+      { nom: "Kenaz", pos: "Clarté, connaissance.", neg: "Obscurité, confusion.", bon: true },
+      { nom: "Gebo", pos: "Don, échange.", neg: "Dépendance, rupture.", bon: true },
+      { nom: "Wunjo", pos: "Joie, harmonie.", neg: "Tension, frustration.", bon: true },
+      { nom: "Hagalaz", pos: "Épreuve, purification.", neg: "Chaos prolongé.", bon: false },
+      { nom: "Nauthiz", pos: "Endurance, discipline.", neg: "Souffrance, blocage.", bon: false },
+      { nom: "Isa", pos: "Pause, introspection.", neg: "Isolement, stagnation.", bon: false },
+      { nom: "Jera", pos: "Récolte, récompense.", neg: "Retard, impatience.", bon: true },
+      { nom: "Eihwaz", pos: "Résilience, transition.", neg: "Peur du changement.", bon: true },
+      { nom: "Perthro", pos: "Mystère, destinée.", neg: "Secrets, illusion.", bon: true },
+      { nom: "Algiz", pos: "Protection, intuition.", neg: "Vulnérabilité.", bon: true },
+      { nom: "Sowilo", pos: "Succès, lumière.", neg: "Échec, orgueil.", bon: true },
+      { nom: "Tiwaz", pos: "Justice, honneur.", neg: "Conflit, perte de direction.", bon: true },
+      { nom: "Berkano", pos: "Naissance, croissance.", neg: "Instabilité émotionnelle.", bon: true },
+      { nom: "Ehwaz", pos: "Confiance, coopération.", neg: "Méfiance, inertie.", bon: true },
+      { nom: "Mannaz", pos: "Humanité, relations.", neg: "Isolement, orgueil.", bon: true },
+      { nom: "Laguz", pos: "Intuition, fluidité.", neg: "Confusion émotionnelle.", bon: true },
+      { nom: "Ingwaz", pos: "Fertilité, paix.", neg: "Agitation, dispersion.", bon: true },
+      { nom: "Dagaz", pos: "Éveil, transformation.", neg: "Stagnation, résistance.", bon: true },
+      { nom: "Othala", pos: "Héritage, racines.", neg: "Rupture familiale.", bon: true },
+      { nom: "Wyrd", pos: "Destin, mystère.", neg: "Karma non résolu.", bon: false }
+    ];
+
+    let tirageRunes = [];
+
+    function tirage() {
+      const now = Date.now();
+      const last = localStorage.getItem("tirageRunes");
+      if (last && now - last < 3600000) {
+        alert("⏳ Tirage déjà effectué. Attends une heure.");
+        return;
+      }
+      localStorage.setItem("tirageRunes", now);
+      document.getElementById("tirer").disabled = true;
+      document.getElementById("tirer").classList.add("disabled");
+      document.getElementById("exporter").disabled = false;
+
+      const tirage = [];
+      const pool = [...runes];
+      for (let i = 0; i < 3; i++) {
+        const r = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+        const sens = Math.random() < 0.5 ? "droite" : "inversée";
+        const texte = sens === "droite" ? r.pos : r.neg;
+        const bon = (sens === "droite") === r.bon;
+        tirage.push({ nom: r.nom, sens, texte, bon });
+      }
+      tirageRunes = tirage;
+      document.getElementById("resultat").innerHTML = tirage.map(r =>
+        `<div class="rune"><h2>${r.nom} (${r.sens})</h2><p>${r.texte}</p><p><strong>${r.bon ? "🌟 Énergie favorable" : "⚠️ Énergie contrariée"}</strong></p></div>`
+      ).join("");
+    }
+
+    function exporter() {
+      if (!tirageRunes.length) return;
+      let txt = "🔮 Tirage de runes\n\n";
+      tirageRunes.forEach((r, i) => {
+        txt += `Rune ${i + 1} : ${r.nom} (${r.sens})\n`;
+        txt += `Interprétation : ${r.texte}\n`;
+        txt += `Énergie : ${r.bon ? "Favorable" : "Contrariée"}\n\n`;
+      });
+      const blob = new Blob([txt], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "tirage_runes.txt";
+      link.click();
+    }
+
+    window.onload = () => {
+      const now = Date.now();
+      const last = localStorage.getItem("tirageRunes");
+      if (last && now - last < 3600000) {
+        document.getElementById("tirer").disabled = true;
+        document.getElementById("tirer").classList.add("disabled");
+        document.getElementById("resultat").innerHTML = "<p>⏳ Tirage déjà effectué. Reviens dans une heure.</p>";
+      } else {
+        tirage();
+      }
+    };
+  </script>
+</body>
+</html>
+

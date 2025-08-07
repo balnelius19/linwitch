@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Plantes Médicinales</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f8f5;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+    }
+    h2, h3 { color: #2e7d32; }
+    input, textarea, button, select {
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #388e3c;
+    }
+    #resultat, #ajout {
+      margin-top: 20px;
+      padding: 10px;
+      background: #ffffff;
+      border: 1px solid #c8e6c9;
+      border-radius: 5px;
+    }
+    ul { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>🔍 Recherche de Plantes Médicinales</h2>
+  <label for="maladie">Choisissez une maladie :</label>
+  <select id="maladie">
+    <option value="">-- Sélectionnez --</option>
+  </select>
+  <button onclick="rechercherPlantes()">Rechercher</button>
+  <div id="resultat"></div>
+
+  <hr>
+
+  <h3>➕ Ajouter une nouvelle maladie et ses plantes</h3>
+  <input type="text" id="nouvelleMaladie" placeholder="Nom de la maladie">
+  <textarea id="plantesAssociees" placeholder="Plantes séparées par des virgules (ex: thym, lavande, camomille)"></textarea>
+  <button onclick="ajouterMaladie()">Ajouter</button>
+  <div id="ajout"></div>
+
+  <script>
+    const maladiesPlantes = {
+      "rhume": ["Échinacée", "Sureau noir", "Gingembre"],
+      "toux": ["Thym", "Réglisse", "Mauve"],
+      "stress": ["Valériane", "Passiflore", "Mélisse"],
+      "insomnie": ["Valériane", "Houblon", "Camomille"],
+      "digestion": ["Menthe poivrée", "Fenouil", "Angélique"],
+      "fièvre": ["Saule blanc", "Sureau", "Achillée millefeuille"],
+      "maux de tête": ["Menthe poivrée", "Saule blanc", "Lavande"],
+      "douleurs articulaires": ["Curcuma", "Harpagophytum", "Gingembre"],
+      "eczéma": ["Bardane", "Pensée sauvage", "Camomille"],
+      "hypertension": ["Aubépine", "Ail", "Olivier"],
+      "diabète": ["Cannelle", "Fenugrec", "Gymnema"],
+      "cholestérol": ["Artichaut", "Ail", "Pissenlit"],
+      "constipation": ["Séné", "Rhubarbe", "Psyllium"],
+      "diarrhée": ["Myrrhe", "Ronce", "Caroube"],
+      "brûlures d’estomac": ["Réglisse", "Camomille", "Ortie"],
+      "fatigue": ["Ginseng", "Maca", "Guarana"],
+      "anémie": ["Ortie", "Spiruline", "Cresson"],
+      "dépression légère": ["Millepertuis", "Griffonia", "Rhodiola"],
+      "troubles menstruels": ["Alchémille", "Achillée", "Sauge"],
+      "ménopause": ["Trèfle rouge", "Sauge", "Actée à grappes"],
+      "acné": ["Pensée sauvage", "Bardane", "Ortie"],
+      "infections urinaires": ["Cranberry", "Busserole", "Bruyère"],
+      "problèmes hépatiques": ["Chardon-Marie", "Desmodium", "Artichaut"],
+      "troubles circulatoires": ["Vigne rouge", "Marronnier d’Inde", "Hamamélis"],
+      "sinusite": ["Eucalyptus", "Thym", "Menthe poivrée"],
+      "asthme": ["Hysope", "Lobélie", "Grindélia"],
+      "allergies": ["Ortie", "Plantain", "Camomille"],
+      "infections respiratoires": ["Propolis", "Eucalyptus", "Sureau"],
+      "troubles de la mémoire": ["Ginkgo biloba", "Romarin", "Bacopa"],
+      "troubles de la libido": ["Tribulus", "Maca", "Ginseng"],
+      "ulcères": ["Réglisse", "Chélidoine", "Camomille"],
+      "arthrose": ["Harpagophytum", "Curcuma", "Saule blanc"],
+      "sciatique": ["Reine-des-prés", "Harpagophytum", "Gaulthérie"],
+      "grippe": ["Sureau", "Eucalyptus", "Propolis"],
+      "nausées": ["Gingembre", "Menthe", "Citron"],
+      "vertiges": ["Ginkgo biloba", "Romarin", "Mélisse"],
+      "colite": ["Camomille", "Mélisse", "Réglisse"],
+      "ballonnements": ["Fenouil", "Carvi", "Anis"],
+      "hémorroïdes": ["Hamamélis", "Marronnier d’Inde", "Vigne rouge"],
+      "rétention d’eau": ["Pissenlit", "Reine-des-prés", "Ortie"]
+    };
+
+    // Remplir la liste déroulante
+    const selectMaladie = document.getElementById("maladie");
+    for (const maladie in maladiesPlantes) {
+      const option = document.createElement("option");
+      option.value = maladie;
+      option.textContent = maladie.charAt(0).toUpperCase() + maladie.slice(1);
+      selectMaladie.appendChild(option);
+    }
+
+    function rechercherPlantes() {
+      const maladie = selectMaladie.value;
+      const resultatDiv = document.getElementById("resultat");
+      resultatDiv.innerHTML = "";
+
+      if (maladie && maladiesPlantes[maladie]) {
+        const plantes = maladiesPlantes[maladie];
+        resultatDiv.innerHTML = `<h3>🌿 Plantes efficaces pour "${maladie}" :</h3><ul>` +
+          plantes.map(p => `<li>${p}</li>`).join("") + "</ul>";
+      } else {
+        resultatDiv.innerHTML = `<p>❌ Aucune plante connue pour la maladie "${maladie}".</p>`;
+      }
+    }
+
+    function ajouterMaladie() {
+      const nom = document.getElementById("nouvelleMaladie").value.toLowerCase().trim();
+      const plantesTexte = document.getElementById("plantesAssociees").value.trim();
+      const ajoutDiv = document.getElementById("ajout");
+      ajoutDiv.innerHTML = "";
+
+      if (!nom || !plantesTexte) {
+        ajoutDiv.innerHTML = `<p>⚠️ Veuillez remplir les deux champs.</p>`;
+        return;
+      }
+
+      const plantes = plantesTexte.split(",").map(p => p.trim()).filter(p => p);
+      maladiesPlantes[nom] = plantes;
+
+      const option = document.createElement("option");
+      option.value = nom;
+      option.textContent = nom.charAt(0).toUpperCase() + nom.slice(1);
+      selectMaladie.appendChild(option);
+
+      ajoutDiv.innerHTML = `<p>✅ Maladie "${nom}" ajoutée avec ${plantes.length} plante(s).</p>`;
+      document.getElementById("nouvelleMaladie").value = "";
+      document.getElementById("plantesAssociees").value = "";
+    }
+  </script>
+</body>
+</html>
+
