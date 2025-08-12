@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dictionnaire de Phytothérapie</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      background: #fdfaf5;
+      color: #2e2e2e;
+      padding: 20px;
+    }
+    h1 {
+      color: #3d6b47;
+    }
+    input {
+      width: 100%;
+      max-width: 520px;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1em;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    li {
+      background: #e0f3e7;
+      margin: 6px 0;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+    .note {
+      margin-top: 18px;
+      font-size: 0.9em;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dictionnaire de Phytothérapie 🌱</h1>
+  <p>Tapez un symptôme exact (ex. « insomnie », « foie », « sinusite ») pour voir les plantes associées.</p>
+  <input type="text" id="search" placeholder="Exemples : stress, digestion, circulation, sinusite, eczéma...">
+  <ul id="result"></ul>
+
+  <script>
+    // Dictionnaire de maux -> plantes traditionnellement associées
+    const dictionnairePhytotherapie = {
+      // ——— Maux précédemment présents ———
+      "fatigue": ["Ginseng", "Éleuthérocoque", "Guarana", "Maté", "Ortie"],
+      "stress": ["Rhodiola", "Griffonia", "Lavande", "Camomille romaine", "Mélisse"],
+      "insomnie": ["Valériane", "Passiflore", "Tilleul", "Aubépine", "Verveine"],
+      "digestion": ["Menthe poivrée", "Fenouil", "Artichaut", "Romarin", "Anis vert"],
+      "foie": ["Desmodium", "Chardon-Marie", "Pissenlit", "Fumeterre", "Boldo"],
+      "circulation": ["Ginkgo biloba", "Vigne rouge", "Fragon", "Hamamélis", "Marron d’Inde"],
+      "constipation": ["Séné", "Frêne", "Chiendent", "Mauve", "Piloselle"],
+      "brûlures d’estomac": ["Réglisse", "Camomille", "Fenouil", "Orme rouge", "Mauve"],
+      "acné": ["Pensée sauvage", "Bardane", "Ortie", "Plantain", "Fumeterre"],
+      "eczéma": ["Calendula", "Pensée sauvage", "Bardane", "Guimauve", "Camomille allemande"],
+      "détox": ["Ortie", "Bouleau", "Fumeterre", "Frêne", "Pissenlit"],
+      "troubles urinaires": ["Busserole", "Orthosiphon", "Queue de cerise", "Canneberge", "Bruyère"],
+      "toux": ["Bouillon-blanc", "Thym", "Guimauve", "Eucalyptus", "Coquelicot"],
+      "migraines": ["Grande camomille", "Menthe poivrée", "Lavande", "Gingembre", "Tilleul"],
+      "ménopause": ["Sauge officinale", "Yam chinois", "Alchémille", "Houblon", "Gattilier"],
+      "troubles menstruels": ["Achillée millefeuille", "Alchémille", "Gattilier", "Sauge", "Yam"],
+      "hypertension": ["Olivier", "Aubépine", "Vigne rouge", "Tilleul", "Sauge"],
+      "cholestérol": ["Artichaut", "Ail", "Curcuma", "Pissenlit", "Reine-des-prés"],
+      "arthrose": ["Harpagophytum", "Saule blanc", "Curcuma", "Reine-des-prés", "Gingembre"],
+      "spasmes digestifs": ["Camomille romaine", "Mélisse", "Menthe verte", "Basilic", "Origan"],
+      "allergies": ["Ortie", "Plantain", "Ribes nigrum (cassis)", "Euphraise", "Camomille"],
+      "diabète": ["Myrtille (feuille)", "Noyer (feuille)", "Galega", "Ortie", "Cannelle"],
+      "infections": ["Échinacée", "Propolis", "Thym", "Cannelle", "Origan"],
+      "troubles hormonaux": ["Gattilier", "Yam chinois", "Sauge", "Onagre", "Alchémille"],
+      "transit lent": ["Fumeterre", "Chiendent", "Frêne", "Mauve", "Artichaut"],
+      "rétention d’eau": ["Orthosiphon", "Queue de cerise", "Solidage", "Frêne", "Piloselle"],
+      "engorgement hépatique": ["Desmodium", "Boldo", "Artichaut", "Chardon-Marie", "Fumeterre"],
+      "rhumes": ["Échinacée", "Thym", "Sureau", "Eucalyptus", "Pin sylvestre"],
+      "fièvre": ["Tilleul", "Reine-des-prés", "Saule blanc", "Camomille", "Sureau"],
+      "ballonnements": ["Fenouil", "Coriandre", "Cumin", "Anis", "Basilic"],
+      "ulcères": ["Réglisse", "Orme rouge", "Camomille", "Guimauve", "Mauve"],
+      "vertiges": ["Ginkgo biloba", "Romarin", "Sauge", "Menthe poivrée", "Valériane"],
+      "déprime": ["Millepertuis", "Rhodiola", "Griffonia", "Lavande", "Safran"],
+      "yeux irrités": ["Euphraise", "Camomille", "Bleuet", "Plantain", "Calendula"],
+      "problèmes de peau": ["Pensée sauvage", "Ortie", "Bardane", "Fumeterre", "Guimauve"],
+      "blessures": ["Arnica", "Calendula", "Plantain", "Lavande", "Prêle"],
+      "hémorroïdes": ["Hamamélis", "Vigne rouge", "Fragon", "Marron d’Inde", "Calendula"],
+      "transpiration excessive": ["Sauge", "Prêle", "Hamamélis", "Menthe", "Thym"],
+      "concentration": ["Romarin", "Ginkgo biloba", "Bacopa", "Maté", "Sauge"],
+      "angoisse": ["Griffonia", "Passiflore", "Camomille", "Mélisse", "Lavande"],
+      "troubles orl": ["Eucalyptus", "Propolis", "Thym", "Pin sylvestre", "Camphrier"],
+      "mal de gorge": ["Guimauve", "Réglisse", "Thym", "Camomille", "Sauge"],
+      "cystite": ["Busserole", "Canneberge", "Bruyère", "Ortie", "Queue de cerise"],
+      "cheveux fragiles": ["Ortie", "Prêle", "Capucine", "Bardane", "Sauge"],
+      "anémie": ["Ortie", "Fenugrec", "Spiruline", "Cresson", "Chlorella"],
+      "tensions musculaires": ["Camomille", "Lavande", "Basilic", "Mélisse", "Valériane"],
+      "troubles digestifs": ["Fenouil", "Menthe", "Basilic", "Romarin", "Artichaut"],
+      "inflammations": ["Curcuma", "Saule blanc", "Reine-des-prés", "Camomille", "Harpagophytum"],
+      "humeur": ["Millepertuis", "Rhodiola", "Griffonia", "Lavande", "Passiflore"],
+      "immunité": ["Échinacée", "Sureau", "Propolis", "Ginseng", "Astragale"],
+
+      // ——— 50 nouveaux maux ajoutés ———
+      "sinusite": ["Eucalyptus", "Thym", "Pin sylvestre", "Menthe poivrée", "Camomille"],
+      "rhinite allergique": ["Ortie", "Plantain", "Ribes nigrum (cassis)", "Euphraise", "Camomille"],
+      "nausées": ["Gingembre", "Menthe poivrée", "Citronnelle", "Mélisse", "Fenouil"],
+      "diarrhée": ["Myrtille (baies)", "Camomille", "Aigremoine", "Ronce (feuille)", "Mauve"],
+      "candidose": ["Ail", "Origan", "Thym", "Cannelle", "Propolis"],
+      "mycoses cutanées": ["Ail", "Calendula", "Lavande", "Thym", "Origan"],
+      "aphtes": ["Réglisse", "Sauge", "Camomille", "Propolis", "Calendula"],
+      "gingivite": ["Sauge", "Camomille", "Propolis", "Menthe poivrée", "Calendula"],
+      "mauvaise haleine": ["Menthe poivrée", "Anis", "Fenouil", "Cardamome", "Persil"],
+      "mal des transports": ["Gingembre", "Menthe poivrée", "Citronnelle", "Mélisse", "Camomille"],
+      "palpitations": ["Aubépine", "Passiflore", "Mélisse", "Valériane", "Lavande"],
+      "irritabilité": ["Passiflore", "Millepertuis", "Lavande", "Mélisse", "Rhodiola"],
+      "crampes musculaires": ["Ortie", "Valériane", "Camomille", "Lavande", "Tilleul"],
+      "courbatures": ["Arnica", "Reine-des-prés", "Saule blanc", "Cassis (feuille)", "Harpagophytum"],
+      "entorse": ["Arnica", "Calendula", "Lavande", "Prêle", "Camomille"],
+      "tendinite": ["Harpagophytum", "Curcuma", "Reine-des-prés", "Saule blanc", "Cassis (feuille)"],
+      "sciatique": ["Harpagophytum", "Curcuma", "Saule blanc", "Lavande", "Millepertuis (macérat)"],
+      "lumbago": ["Harpagophytum", "Saule blanc", "Curcuma", "Lavande", "Reine-des-prés"],
+      "varices": ["Vigne rouge", "Marron d’Inde", "Hamamélis", "Fragon", "Cassis (feuille)"],
+      "jambes lourdes": ["Vigne rouge", "Marron d’Inde", "Fragon", "Hamamélis", "Ginkgo biloba"],
+      "œdèmes": ["Orthosiphon", "Piloselle", "Queue de cerise", "Frêne", "Solidage"],
+      "cicatrisation lente": ["Calendula", "Plantain", "Aloès vera", "Lavande", "Prêle"],
+      "coups de soleil": ["Aloès vera", "Calendula", "Lavande", "Camomille", "Millepertuis (macérat)"],
+      "piqûres d’insectes": ["Plantain", "Lavande", "Calendula", "Camomille", "Basilic"],
+      "psoriasis": ["Bardane", "Pensée sauvage", "Curcuma", "Calendula", "Aloès vera"],
+      "rosacée": ["Camomille", "Calendula", "Marron d’Inde", "Hamamélis", "Vigne rouge"],
+      "urticaire": ["Ortie", "Cassis (feuille)", "Pensée sauvage", "Plantain", "Camomille"],
+      "reflux gastro-œsophagien": ["Réglisse", "Guimauve", "Orme rouge", "Camomille", "Mauve"],
+      "syndrome de l’intestin irritable": ["Menthe poivrée", "Mélisse", "Camomille romaine", "Fenouil", "Curcuma"],
+      "flatulences": ["Fenouil", "Anis", "Cumin", "Coriandre", "Cardamome"],
+      "manque d’appétit": ["Romarin", "Artichaut", "Angélique", "Gingembre", "Aigremoine"],
+      "calculs rénaux": ["Orthosiphon", "Piloselle", "Frêne", "Bouleau", "Queue de cerise"],
+      "coliques néphrétiques": ["Bruyère", "Orthosiphon", "Queue de cerise", "Genévrier (baies)", "Pissenlit"],
+      "troubles prostatiques": ["Ortie (racine)", "Piloselle", "Busserole", "Bruyère", "Queue de cerise"],
+      "baisse de libido": ["Damiana", "Ginseng", "Rhodiola", "Gingembre", "Safran"],
+      "dysfonction érectile": ["Ginseng", "Ginkgo biloba", "Safran", "Rhodiola", "Damiana"],
+      "convalescence": ["Échinacée", "Ginseng", "Astragale", "Ortie", "Sureau"],
+      "gestion du poids": ["Maté", "Guarana", "Orthosiphon", "Pissenlit", "Artichaut"],
+      "fringales sucrées": ["Cannelle", "Fenugrec", "Orme rouge", "Mauve", "Myrtille"],
+      "hyperhidrose": ["Sauge", "Hamamélis", "Prêle", "Menthe", "Thym"],
+      "odeurs corporelles": ["Sauge", "Menthe poivrée", "Romarin", "Thym", "Lavande"],
+      "drainage lymphatique": ["Piloselle", "Solidage", "Frêne", "Bouleau", "Ortie"],
+      "crampes nocturnes": ["Valériane", "Tilleul", "Lavande", "Aubépine", "Ortie"],
+      "trac": ["Passiflore", "Griffonia", "Mélisse", "Lavande", "Aubépine"],
+      "surmenage": ["Rhodiola", "Ginseng", "Bacopa", "Romarin", "Maté"],
+      "décalage horaire": ["Mélisse", "Valériane", "Passiflore", "Maté (journée)", "Rhodiola"],
+      "bronchite": ["Thym", "Eucalyptus", "Bouillon-blanc", "Plantain", "Réglisse"],
+      "enrouement": ["Guimauve", "Réglisse", "Mauve", "Thym", "Camomille"],
+      "chute de cheveux": ["Ortie", "Prêle", "Romarin", "Capucine", "Sauge"],
+      "pellicules": ["Ortie", "Capucine", "Sauge", "Lavande", "Romarin"]
+    };
+
+  document.getElementById("search").addEventListener("input", function () {
+  const query = this.value.trim().toLowerCase();
+  const resultList = document.getElementById("result");
+  resultList.innerHTML = "";
+
+  if (!query) return;
+
+  const match = Object.keys(dictionnairePhytotherapie).find(key => key.toLowerCase().includes(query));
+
+  if (match) {
+    dictionnairePhytotherapie[match].forEach(plante => {
+      const li = document.createElement("li");
+      li.textContent = plante;
+      resultList.appendChild(li);
+    });
+  } else if (query.length > 2) {
+    const li = document.createElement("li");
+    li.textContent = "❌ Aucun résultat pour ce symptôme.";
+    resultList.appendChild(li);
+  }
+});
+
+  </script>
+
+  <p class="note">Note: correspondances d’usage traditionnel en phytothérapie, à adapter à chaque personne. En cas de pathologie, grossesse, traitement ou allergie, demandez conseil à un professionnel de santé.</p>
+</body>
+</html>
+
