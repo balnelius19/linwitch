@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Fêtes Chamanistes Vietnamiennes jusqu'en 2040</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f4f9;
+      color: #333;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #5c3d2e;
+    }
+    .fete {
+      background-color: #fff;
+      border-left: 5px solid #8b5e3c;
+      margin: 15px 0;
+      padding: 10px 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .date {
+      font-weight: bold;
+      color: #8b5e3c;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔮 Fêtes Chamanistes Vietnamiennes (2025–2040)</h1>
+  <div id="liste-fetes"></div>
+
+  <script>
+    const fetesChamanistesVN = [];
+
+    // Génération des fêtes annuelles jusqu'en 2040
+    for (let annee = 2025; annee <= 2040; annee++) {
+      fetesChamanistesVN.push(
+        { nom: "Vu Lan - Fête des âmes errantes", date: `${annee}-09-06` },
+        { nom: "Fête des fantômes", date: `${annee}-09-06` },
+        { nom: "Festival Sen Dolta", date: `${annee}-10-20` },
+        { nom: "Chol Chnam Thmay - Nouvel An Khmer", date: `${annee}-04-12` },
+        { nom: "Vesak - Anniversaire de Bouddha", date: `${annee}-05-31` },
+        { nom: "Doan Ngo - Fête de purification", date: `${annee}-06-19` }
+      );
+    }
+
+    const aujourdHui = new Date();
+    const container = document.getElementById("liste-fetes");
+
+    const fetesAVenir = fetesChamanistesVN.filter(fete => new Date(fete.date) > aujourdHui);
+
+    if (fetesAVenir.length === 0) {
+      container.innerHTML = "<p>🌌 Aucune fête chamaniste vietnamienne à venir.</p>";
+    } else {
+      fetesAVenir.forEach(fete => {
+        const date = new Date(fete.date).toLocaleDateString("fr-FR");
+        const div = document.createElement("div");
+        div.className = "fete";
+        div.innerHTML = `<div class="date">📅 ${date}</div><div>✨ ${fete.nom}</div>`;
+        container.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
