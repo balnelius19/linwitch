@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Casse-brique – Balle losange</title>
+  <style>
+    canvas { background: #111; display: block; margin: auto; }
+    body { text-align: center; color: white; font-family: sans-serif; background: #222; }
+  </style>
+</head>
+<body>
+  <h1>Casse-brique – Balle losange</h1>
+  <p id="info">Score: 0 | Record: 0 | Vies: 3 | Niveau: 1 / 4</p>
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+  <audio id="bgMusic" src="musique.mp3" autoplay loop></audio>
+  <audio id="impactSound" src="impact.mp3"></audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let score = 0, record = 0, lives = 3, level = 1;
+    let ballSpeed = 2;
+    let ball = { x: 300, y: 200, dx: ballSpeed, dy: -ballSpeed, r: 10 };
+    let paddle = { x: 250, y: 380, width: 100, height: 10 };
+    let bricks = [];
+    let isPlaying = false;
+
+    function initBricks() {
+      bricks = [];
+      for (let i = 0; i < 5; i++) {
+        for (let j = 0; j < 8; j++) {
+          bricks.push({ x: j * 70 + 10, y: i * 20 + 30, w: 60, h: 10, hit: false });
+        }
+      }
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.moveTo(ball.x, ball.y - ball.r);
+      ctx.lineTo(ball.x + ball.r, ball.y);
+      ctx.lineTo(ball.x, ball.y + ball.r);
+      ctx.lineTo(ball.x - ball.r, ball.y);
+      ctx.closePath();
+      ctx.fillStyle = "cyan";
+      ctx.fill();
+    }
+
+    function drawPaddle() {
+      ctx.fillStyle = "lime";
+      ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+    }
+
+    function drawBricks() {
+      bricks.forEach(b => {
+        if (!b.hit) {
+          ctx.fillStyle = "orange";
+          ctx.fillRect(b.x, b.y, b.w, b.h);
+        }
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBall();
+      drawPaddle();
+      drawBricks();
+    }
+
+    function update() {
+      if (!isPlaying) return;
+
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      // Wall collision
+      if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.dx *= -1;
+      if (ball.y < ball.r) ball.dy *= -1;
+
+      // Paddle collision
+      if (ball.y + ball.r > paddle.y &&
+          ball.x > paddle.x && ball.x < paddle.x + paddle.width) {
+        ball.dy *= -1;
+        document.getElementById("impactSound").play();
+      }
+
+      // Brick collision
+      bricks.forEach(b => {
+        if (!b.hit &&
+            ball.x > b.x && ball.x < b.x + b.w &&
+            ball.y > b.y && ball.y < b.y + b.h) {
+          b.hit = true;
+          ball.dy *= -1;
+          score += 50;
+          document.getElementById("impactSound").play();
+
+          if (score % 500 === 0) ballSpeed += 1;
+        }
+      });
+
+      // Bottom collision
+      if (ball.y > canvas.height) {
+        lives--;
+        if (lives <= 0) {
+          alert("Game Over");
+          resetGame();
+        } else {
+          ball.x = 300;
+          ball.y = 200;
+          ball.dx = ballSpeed;
+          ball.dy = -ballSpeed;
+          isPlaying = false;
+        }
+      }
+
+      // Trap effect
+      if (Math.random() < 0.005) {
+        let effect = Math.random() < 0.5 ? 'shrink' : 'expand';
+        paddle.width *= effect === 'shrink' ? 0.7 : 1.3;
+        paddle.width = Math.max(40, Math.min(paddle.width, 200));
+      }
+
+      // Level progression
+      if (bricks.every(b => b.hit)) {
+        level++;
+        if (level > 4) {
+          alert("Tu as gagné !");
+          resetGame();
+        } else {
+          initBricks();
+          ballSpeed += 1;
+        }
+      }
+
+      document.getElementById("info").textContent =
+        `Score: ${score} | Record: ${record} | Vies: ${lives} | Niveau: ${level} / 4`;
+    }
+
+    function resetGame() {
+      score = 0;
+      lives = 3;
+      level = 1;
+      ballSpeed = 2;
+      paddle.width = 100;
+      initBricks();
+      isPlaying = false;
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.code === "ArrowLeft") paddle.x -= 20;
+      if (e.code === "ArrowRight") paddle.x += 20;
+      if (e.code === "Space") isPlaying = true;
+    });
+
+    resetGame();
+    setInterval(() => {
+      update();
+      draw();
+    }, 1000 / 60);
+  </script>
+</body>
+</html>
