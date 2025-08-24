@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atari Prototype</title>
+<style>
+  html, body { margin:0; height:100%; background:#000; }
+  canvas { display:block; width:100vw; height:100vh; }
+  .overlay {
+    position:fixed; left:12px; top:10px; color:#cfe7ff; font:14px/1.4 monospace; text-shadow:0 0 4px #1e90ff;
+    user-select:none; pointer-events:none;
+  }
+  .overlay.right { left:auto; right:12px; text-align:right; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="overlay" id="hudLeft"></div>
+<div class="overlay right" id="hudRight"></div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  const hudL = document.getElementById('hudLeft');
+  const hudR = document.getElementById('hudRight');
+  let W = 0, H = 0, DPR = Math.max(1, window.devicePixelRatio || 1);
+
+  function resize() {
+    W = Math.floor(canvas.clientWidth * DPR);
+    H = Math.floor(canvas.clientHeight * DPR);
+    canvas.width = W; canvas.height = H;
+  }
+  window.addEventListener('resize', resize, {passive:true});
+  resize();
+
+  // Camera & world params
+  const FOV = 700;         // plus grand => plus de profondeur
+  const Z_NEAR = 1.5;
+  const GRID_STEP = 10;    // taille des carreaux au sol
+  const GRID_XMAX = 120;   // largeur du sol
+  const GRID_ZFAR = 500;   // profondeur affichée
+  const BASE_SPEED = 26;   // vitesse d'avancement
+  const BOOST_SPEED = 44;  // vitesse avec boost
+
+  // Player state
+  const player = {
+    x: 0,
+    y: 3.0,
+    z: 0,
+    vx: 0, vy: 0,
+    roll: 0,
+    shield: 100,
+    alive: true,
+  };
+
+  // Input
+  const keys = new Set();
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    keys.add(e.key.toLowerCase());
+  });
+  window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+
+  // Entities
+  const enemies = [];
+  const bullets = [];
+  const sparks = [];
+
+  function spawnEnemy() {
+    // Ennemis en avant, positionnés aléatoirement
+    const e = {
+      x: (Math.random()*2 - 1) * 40,     // latéral
+      y: 1.2 + Math.random()*5.0,        // altitude
+      z: 120 + Math.random()*320,        // profondeur
+      radius: 2.4,
+      wiggleT: Math.random()*Math.PI*2,
+      hp: 1,
+      color: `hsl(${180 + Math.random()*60}, 80%, 60%)`,
+    };
+    enemies.push(e);
+  }
+
+  for (let i=0;i<18;i++) spawnEnemy();
+
+  // Utils
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function project(x, y, z) {
+    // caméra au centre; z > 0 => devant
+    const f = FOV / Math.max(Z_NEAR, z);
+    const sx = (x * f) + W/2;
+    const sy = (-y * f) + H*0.55; // place l’horizon
+    return {x:sx, y:sy, w:f};
+  }
+
+  // Shooting
+  let canShoot = true, shootCooldown = 0;
+  const SHOOT_RATE = 10; // balles par seconde
+  function shoot() {
+    if (!player.alive) return;
+    if (shootCooldown > 0) return;
+    shootCooldown = 1/SHOOT_RATE;
+    bullets.push({
+      x: player.x,
+      y: player.y,
+      z: 6,             // point de départ un peu devant
+      vx: 0,
+      vy: 0,
+      vz: 80,           // vitesse vers l’avant
+      ttl: 1.2,
+    });
+  }
+
+  function addSparks(x,y,z, baseHue=35) {
+    for (let i=0;i<18;i++){
+      const ang = Math.random()*Math.PI*2;
+      const sp = 6 + Math.random()*10;
+      sparks.push({
+        x, y, z,
+        vx: Math.cos(ang)*sp,
+        vy: (Math.random()*2 - 1) * sp * 0.4,
+        vz: Math.sin(ang)*sp,
+        ttl: 0.5 + Math.random()*0.4,
+        hue: baseHue + Math.random()*20
+      });
+    }
+  }
+
+  // Game loop
+  let prev = performance.now();
+  let score = 0;
+
+  function step(now) {
+    const dt = Math.min(0.033, (now - prev) / 1000);
+    prev = now;
+    update(dt);
+    render();
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+
+  function update(dt) {
+    // Vitesse avant (défilement)
+    const forward = (keys.has('w')) ? BOOST_SPEED : BASE_SPEED;
+
+    // Contrôles latéraux/altitude
+    const targetVx = (keys.has('arrowleft') ? -18 : 0) + (keys.has('arrowright') ? 18 : 0);
+    const targetVy = (keys.has('arrowup') ? 12 : 0) + (keys.has('arrowdown') ? -12 : 0);
+    player.vx += (targetVx - player.vx) * Math.min(1, dt*8);
+    player.vy += (targetVy - player.vy) * Math.min(1, dt*8);
+
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    player.y = clamp(player.y, 0.6, 9.0);
+
+    // Roll visuel
+    const targetRoll = clamp(-player.vx * 0.03, -0.6, 0.6);
+    player.roll += (targetRoll - player.roll) * Math.min(1, dt*6);
+
+    // Tir
+    if (keys.has(' ')) shoot();
+    if (shootCooldown > 0) shootCooldown -= dt;
+
+    // Mettre le monde “en avant” → déplacer tout vers nous
+    for (const e of enemies) {
+      e.z -= forward * dt * 0.9;
+      e.wiggleT += dt * 1.7;
+      e.x += Math.sin(e.wiggleT) * dt * 4.0;
+      // légère chasse vers le joueur
+      e.x += (player.x - e.x) * dt * 0.25;
+      e.y += (player.y - e.y) * dt * 0.1;
+
+      // Collision avec le joueur
+      const dx = e.x - player.x;
+      const dy = e.y - player.y;
+      const dz = e.z - 6;
+      const d2 = dx*dx + dy*dy + dz*dz;
+      if (d2 < (e.radius*e.radius + 6)) {
+        player.shield -= 12;
+        addSparks(e.x, e.y, e.z, 12);
+        respawnEnemy(e);
+      }
+
+      if (e.z < 4) {
+        // Passe trop près → dégâts légers, respawn
+        player.shield -= 6;
+        addSparks(e.x, 0.2, e.z, 10);
+        respawnEnemy(e);
+      }
+    }
+
+    // Bullets
+    for (let i=bullets.length-1; i>=0; i--) {
+      const b = bullets[i];
+      b.z += b.vz * dt;
+      b.ttl -= dt;
+      if (b.ttl <= 0 || b.z > GRID_ZFAR) { bullets.splice(i,1); continue; }
+      // Hit test
+      for (let j=enemies.length-1; j>=0; j--) {
+        const e = enemies[j];
+        const dx = e.x - b.x;
+        const dy = e.y - b.y;
+        const dz = e.z - b.z;
+        if (dx*dx + dy*dy + dz*dz < (e.radius*e.radius)) {
+          e.hp -= 1;
+          bullets.splice(i,1);
+          addSparks(e.x, e.y, e.z, 35);
+          if (e.hp <= 0) {
+            score += 25;
+            respawnEnemy(e, true);
+          }
+          break;
+        }
+      }
+    }
+
+    // Sparks
+    for (let i=sparks.length-1;i>=0;i--) {
+      const p = sparks[i];
+      p.ttl -= dt;
+      p.z -= BASE_SPEED * dt * 0.4; // le monde avance
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.z += p.vz * dt;
+      p.vy -= 9.8 * 0.3 * dt; // petite gravité
+      if (p.ttl <= 0 || p.z < Z_NEAR) sparks.splice(i,1);
+    }
+
+    // Mort
+    if (player.shield <= 0 && player.alive) {
+      player.alive = false;
+      for (let k=0;k<60;k++) addSparks(player.x, player.y, 14, 0);
+    }
+
+    // HUD
+    hudL.textContent = `SCORE ${score}\nALT ${player.y.toFixed(1)}  SPD ${(forward).toFixed(0)}`;
+    hudR.textContent = `SHIELD ${Math.max(0, Math.ceil(player.shield))}`;
+  }
+
+  function respawnEnemy(e, destroyed=false) {
+    e.x = (Math.random()*2 - 1) * 40;
+    e.y = 1.0 + Math.random()*6.5;
+    e.z = 180 + Math.random()*340;
+    e.radius = 2.2 + Math.random()*0.8;
+    e.wiggleT = Math.random()*Math.PI*2;
+    e.hp = 1;
+    e.color = destroyed ? `hsl(${40 + Math.random()*20}, 85%, 65%)` : `hsl(${180 + Math.random()*60}, 80%, 60%)`;
+  }
+
+  function render() {
+    // Sky gradient
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#02121f');
+    sky.addColorStop(0.55, '#0b2540');
+    sky.addColorStop(1, '#041018');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+
+    // Ground grid
+    drawGrid();
+
+    // Enemies
+    for (const e of enemies) {
+      drawBillboard(e.x - player.x, e.y - player.y, e.z, e.radius, e.color, true);
+    }
+
+    // Bullets
+    for (const b of bullets) {
+      drawBillboard(b.x - player.x, b.y - player.y, b.z, 0.6, '#ffd06b', false);
+    }
+
+    // Sparks
+    for (const p of sparks) {
+      const alpha = Math.max(0, Math.min(1, p.ttl * 2));
+      const col = `hsla(${p.hue}, 100%, 60%, ${alpha})`;
+      drawBillboard(p.x - player.x, p.y - player.y, p.z, 0.4, col, false);
+    }
+
+    // HUD reticle / craft wings
+    drawReticle();
+    if (!player.alive) drawGameOver();
+  }
+
+  function drawGrid() {
+    ctx.lineWidth = 1;
+    // lignes horizontales (constantes en z)
+    for (let z = 8; z < GRID_ZFAR; z += GRID_STEP) {
+      const p1 = project(-GRID_XMAX, 0, z);
+      const p2 = project(+GRID_XMAX, 0, z);
+      const a = clamp(1 - z / GRID_ZFAR, 0, 1);
+      ctx.strokeStyle = `rgba(120, 200, 255, ${0.15 * a + 0.05})`;
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+    // lignes verticales (constantes en x)
+    for (let x = -GRID_XMAX; x <= GRID_XMAX; x += GRID_STEP) {
+      const p1 = project(x, 0, 8);
+      const p2 = project(x, 0, GRID_ZFAR);
+      const a = 0.12;
+      ctx.strokeStyle = `rgba(120, 200, 255, ${a})`;
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+    // horizon glow
+    const horizonY = project(0, 0, GRID_ZFAR).y;
+    const grad = ctx.createLinearGradient(0, horizonY-30, 0, horizonY+30);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.5, 'rgba(80,160,255,0.15)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, horizonY-30, W, 60);
+  }
+
+  function drawBillboard(x, y, z, r, color, withShadow) {
+    if (z <= Z_NEAR) return;
+    const p = project(x, y, z);
+    const size = r * p.w * 2.0;
+    if (size < 1) return;
+
+    if (withShadow) {
+      const ground = project(x, 0, z);
+      const sh = size * 0.7;
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(ground.x, ground.y+2, sh, sh*0.35, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    const radial = ctx.createRadialGradient(p.x- size*0.1, p.y- size*0.2, size*0.1, p.x, p.y, size);
+    radial.addColorStop(0, '#fff');
+    radial.addColorStop(0.2, color);
+    radial.addColorStop(1, 'rgba(0,0,0,0.15)');
+    ctx.fillStyle = radial;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, size, size, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // simple rim
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, size, size, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  function drawReticle() {
+    ctx.save();
+    ctx.translate(W/2, H*0.55);
+    ctx.rotate(player.roll);
+    ctx.strokeStyle = 'rgba(200, 240, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI*2);
+    ctx.moveTo(-30, 0); ctx.lineTo(-12, 0);
+    ctx.moveTo(30, 0); ctx.lineTo(12, 0);
+    ctx.moveTo(0, -30); ctx.lineTo(0, -12);
+    ctx.moveTo(0, 30); ctx.lineTo(0, 12);
+    ctx.stroke();
+
+    // ailes du craft
+    ctx.strokeStyle = 'rgba(120, 200, 255, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-42, 18);
+    ctx.lineTo(-10, 6);
+    ctx.moveTo(42, 18);
+    ctx.lineTo(10, 6);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawGameOver() {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#e8f3ff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${28*DPR}px monospace`;
+    ctx.fillText('GAME OVER', W/2, H/2 - 10*DPR);
+    ctx.font = `${16*DPR}px monospace`;
+    ctx.fillText(`Score: ${score} — appuyez sur R pour rejouer`, W/2, H/2 + 22*DPR);
+    ctx.restore();
+  }
+
+  // Restart
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'r' && !player.alive) resetGame();
+  });
+
+  function resetGame() {
+    player.x = 0; player.y = 3; player.vx = 0; player.vy = 0; player.roll = 0;
+    player.shield = 100; player.alive = true;
+    bullets.length = 0; sparks.length = 0; enemies.length = 0;
+    for (let i=0;i<18;i++) spawnEnemy();
+    score = 0;
+  }
+})();
+</script>
+</body>
+</html>
