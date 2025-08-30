@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RPG Tour par Tour — Tour de 10 Étages</title>
+<style>
+  :root {
+    --bg: #0f1220; --panel: #161a2e; --accent: #7a8cff; --text: #e8ecff; --muted:#9aa3c7; --danger:#ff6b6b; --ok:#2ee6a6; --warn:#ffd36e;
+  }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto; background:linear-gradient(180deg,#0f1220,#0b0e1a); color:var(--text); }
+  .wrap { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+  h1 { font-size: 22px; margin: 0 0 12px; color: var(--accent); }
+  .grid { display:grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid #222748; border-radius: 12px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  .row { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; }
+  .stat { background:#0e1230; border: 1px solid #1f2550; padding:8px 12px; border-radius: 10px; }
+  .bar { position:relative; height: 12px; background:#0d1130; border:1px solid #1f2550; border-radius:8px; overflow:hidden; }
+  .hp { background: linear-gradient(90deg, #ff6b6b, #ff9f7a); height:100%; }
+  .mp { background: linear-gradient(90deg, #7a8cff, #9ba8ff); height:100%; }
+  .flex { display:flex; gap: 16px; }
+  .col { flex:1; }
+  .title { font-weight: 700; color:#c9d1ff; }
+  .muted { color: var(--muted); }
+  .enemy { font-weight:700; color:#ffd36e; }
+  .btns { display:flex; gap:8px; flex-wrap: wrap; margin-top: 12px; }
+  button { background:#1b2050; color:var(--text); border:1px solid #2a3170; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; }
+  button:hover { background:#202764; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-phys { border-color:#4c2a6f; background:#23183f; }
+  .btn-fire { border-color:#7a2c2c; background:#2a1821; }
+  .btn-ice { border-color:#2c6e7a; background:#18252a; }
+  .btn-light { border-color:#656ee5; background:#1a1d3f; }
+  .btn-heal { border-color:#1c7a5a; background:#0f2a23; }
+  .btn-next { border-color:#7a6c2c; background:#2a2318; }
+  .log { height: 340px; overflow:auto; background:#0c0f25; border:1px solid #1a1f40; border-radius:10px; padding:12px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .line { margin: 6px 0; }
+  .good { color:var(--ok); }
+  .bad { color:var(--danger); }
+  .warn { color:var(--warn); }
+  .small { font-size: 12px; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #2a3170; background:#101433; margin: 0 6px 6px 0; }
+  .footer { margin-top: 14px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tour de l’Aiguille d’Obsidienne — RPG au tour par tour</h1>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="row">
+        <div class="stat">
+          <div class="title">Étage</div>
+          <div id="floor">1 / 10</div>
+        </div>
+        <div class="stat">
+          <div class="title">Joueur PV</div>
+          <div class="bar" style="width:220px"><div id="hpBar" class="hp" style="width:100%"></div></div>
+          <div id="hpText" class="small muted">—</div>
+        </div>
+        <div class="stat">
+          <div class="title">Joueur PM</div>
+          <div class="bar" style="width:220px"><div id="mpBar" class="mp" style="width:100%"></div></div>
+          <div id="mpText" class="small muted">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div><span class="title">Ennemi :</span> <span id="enemyName" class="enemy">—</span></div>
+        <div class="row" style="margin-top:6px">
+          <div class="stat">
+            <div class="title">PV Ennemi</div>
+            <div class="bar" style="width:220px"><div id="ehpBar" class="hp" style="width:100%"></div></div>
+            <div id="ehpText" class="small muted">—</div>
+          </div>
+          <div class="stat">
+            <div class="title">Immunités</div>
+            <div id="immunities" class="small muted">—</div>
+          </div>
+          <div class="stat">
+            <div class="title">Résistances</div>
+            <div id="resists" class="small muted">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="btnAttack" class="btn-phys">Attaque Épée</button>
+        <button id="btnFire" class="btn-fire">Brasier (PM 8)</button>
+        <button id="btnIce" class="btn-ice">Glace Éternelle (PM 7)</button>
+        <button id="btnLightning" class="btn-light">Éclair Divin (PM 7)</button>
+        <button id="btnHeal" class="btn-heal">Soin Lumineux (PM 10)</button>
+        <button id="btnNext" class="btn-next" style="display:none">Monter à l’étage suivant</button>
+        <button id="btnRetry" class="btn-next" style="display:none">Recommencer la tour</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="title" style="margin-bottom:8px">Journal de combat</div>
+      <div id="log" class="log"></div>
+      <div class="footer">
+        - Épée = dégâts physiques. Sorts = dégâts magiques (feu, glace, foudre).<br/>
+        - Les immunités annulent complètement les dégâts. Les résistances réduisent les dégâts de moitié.<br/>
+        - Entre les étages, récupération: PV +30% max, PM +50% max. Boss du 10e étage: alterne immunité Physique/Magique à chaque tour.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- Modèle ----------
+  const TYPES = {
+    PHYSICAL: 'physique',
+    FIRE: 'feu',
+    ICE: 'glace',
+    LIGHTNING: 'foudre',
+    MAGIC: 'magie', // catégorie générique pour les sorts (utile pour le boss final)
+  };
+
+  const playerBase = {
+    name: 'Héros',
+    maxHp: 120,
+    hp: 120,
+    maxMp: 40,
+    mp: 40,
+    sword: { base: 20, type: TYPES.PHYSICAL },
+    spells: {
+      fire:  { name: 'Brasier',          cost: 8,  base: 25, type: TYPES.FIRE },
+      ice:   { name: 'Glace Éternelle',  cost: 7,  base: 22, type: TYPES.ICE  },
+      bolt:  { name: 'Éclair Divin',     cost: 7,  base: 24, type: TYPES.LIGHTNING },
+      heal:  { name: 'Soin Lumineux',    cost:10,  heal: 24 },
+    }
+  };
+
+  function enemyTemplates() {
+    return [
+      {
+        key: 'skeleton',
+        name: 'Garde Squelette',
+        maxHp: 70, minAtk: 8, maxAtk: 12,
+        immunities: new Set([TYPES.FIRE]),
+        resists: {} // none
+      },
+      {
+        key: 'iceGolem',
+        name: 'Golem de Glace',
+        maxHp: 85, minAtk: 9, maxAtk: 13,
+        immunities: new Set([TYPES.ICE]),
+        resists: {}
+      },
+      {
+        key: 'steelKnight',
+        name: 'Chevalier d’Acier',
+        maxHp: 90, minAtk: 10, maxAtk: 15,
+        immunities: new Set([TYPES.LIGHTNING]),
+        resists: {}
+      },
+      {
+        key: 'shadowWraith',
+        name: 'Spectre Ombreux',
+        maxHp: 60, minAtk: 11, maxAtk: 16,
+        immunities: new Set([TYPES.PHYSICAL]),
+        resists: {}
+      },
+      {
+        key: 'magmaSalamander',
+        name: 'Salamandre Magmatique',
+        maxHp: 95, minAtk: 10, maxAtk: 14,
+        immunities: new Set([TYPES.FIRE]),
+        resists: { [TYPES.LIGHTNING]: 0.5 }
+      }
+    ];
+  }
+
+  function bossTemplate() {
+    return {
+      key: 'fallenPriest',
+      name: 'Prêtre Déchu',
+      maxHp: 180, minAtk: 14, maxAtk: 22,
+      immunities: new Set(), // alterne à chaque tour
+      resists: {}
+    };
+  }
+
+  // ---------- État du jeu ----------
+  const state = {
+    floor: 1,
+    player: null,
+    enemy: null,
+    bossAltMagicImmune: false, // alterne chaque tour pour le boss: faux = immunité Physique, vrai = immunité Magique
+    canAct: true
+  };
+
+  // ---------- Utilitaires ----------
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+  function scaleByFloor(base, floor) {
+    // Progression douce: +15% PV, +7% ATK par étage (avant boss)
+    const hpScale = 1 + 0.15 * (floor - 1);
+    const atkScale = 1 + 0.07 * (floor - 1);
+    return { hpScale, atkScale };
+  }
+
+  function isImmune(enemy, type) {
+    return enemy.immunities.has(type);
+  }
+
+  function isResisted(enemy, type) {
+    return enemy.resists[type] != null;
+  }
+
+  function typeLabel(type) {
+    switch(type) {
+      case TYPES.PHYSICAL: return 'Physique';
+      case TYPES.FIRE: return 'Feu';
+      case TYPES.ICE: return 'Glace';
+      case TYPES.LIGHTNING: return 'Foudre';
+      case TYPES.MAGIC: return 'Magie';
+      default: return type;
+    }
+  }
+
+  // ---------- Interface ----------
+  const el = {
+    floor: document.getElementById('floor'),
+    hpBar: document.getElementById('hpBar'),
+    hpText: document.getElementById('hpText'),
+    mpBar: document.getElementById('mpBar'),
+    mpText: document.getElementById('mpText'),
+    enemyName: document.getElementById('enemyName'),
+    ehpBar: document.getElementById('ehpBar'),
+    ehpText: document.getElementById('ehpText'),
+    immunities: document.getElementById('immunities'),
+    resists: document.getElementById('resists'),
+    log: document.getElementById('log'),
+    btnAttack: document.getElementById('btnAttack'),
+    btnFire: document.getElementById('btnFire'),
+    btnIce: document.getElementById('btnIce'),
+    btnLightning: document.getElementById('btnLightning'),
+    btnHeal: document.getElementById('btnHeal'),
+    btnNext: document.getElementById('btnNext'),
+    btnRetry: document.getElementById('btnRetry'),
+  };
+
+  function logLine(html, cls='') {
+    const div = document.createElement('div');
+    div.className = 'line ' + cls;
+    div.innerHTML = html;
+    el.log.appendChild(div);
+    el.log.scrollTop = el.log.scrollHeight;
+  }
+
+  function setBars() {
+    // Player
+    const p = state.player;
+    const hpPct = Math.round((p.hp / p.maxHp) * 100);
+    const mpPct = Math.round((p.mp / p.maxMp) * 100);
+    el.hpBar.style.width = clamp(hpPct,0,100) + '%';
+    el.mpBar.style.width = clamp(mpPct,0,100) + '%';
+    el.hpText.textContent = `${p.hp} / ${p.maxHp}`;
+    el.mpText.textContent = `${p.mp} / ${p.maxMp}`;
+
+    // Enemy
+    const e = state.enemy;
+    const ehpPct = Math.round((e.hp / e.maxHp) * 100);
+    el.ehpBar.style.width = clamp(ehpPct,0,100) + '%';
+    el.ehpText.textContent = `${e.hp} / ${e.maxHp}`;
+  }
+
+  function setEnemyInfo() {
+    const e = state.enemy;
+    el.enemyName.textContent = e.name;
+
+    // Immunités
+    if (e.immunities.size === 0) {
+      el.immunities.innerHTML = '<span class="pill muted">Aucune</span>';
+    } else {
+      el.immunities.innerHTML = '';
+      e.immunities.forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'pill';
+        span.textContent = typeLabel(t);
+        el.immunities.appendChild(span);
+      });
+    }
+    // Résistances
+    const keys = Object.keys(e.resists || {});
+    if (keys.length === 0) {
+      el.resists.innerHTML = '<span class="pill muted">Aucune</span>';
+    } else {
+      el.resists.innerHTML = '';
+      keys.forEach(k => {
+        const span = document.createElement('span');
+        span.className = 'pill';
+        span.textContent = `${typeLabel(k)} (-50%)`;
+        el.resists.appendChild(span);
+      });
+    }
+  }
+
+  function updateFloorUI() {
+    el.floor.textContent = `${state.floor} / 10`;
+    setBars();
+    setEnemyInfo();
+  }
+
+  function setActionEnabled(enabled) {
+    state.canAct = enabled;
+    [el.btnAttack, el.btnFire, el.btnIce, el.btnLightning, el.btnHeal].forEach(b => b.disabled = !enabled);
+  }
+
+  function showNextButton(show) {
+    el.btnNext.style.display = show ? 'inline-block' : 'none';
+  }
+
+  function showRetryButton(show) {
+    el.btnRetry.style.display = show ? 'inline-block' : 'none';
+  }
+
+  // ---------- Combat ----------
+  function computeDamage(base, type, enemy) {
+    if (isImmune(enemy, type)) return 0;
+    let dmg = base;
+    if (isResisted(enemy, type)) {
+      const mult = 1 - enemy.resists[type]; // ex: 0.5 -> 50% réduction
+      dmg = Math.floor(dmg * mult);
+    }
+    // Petite variance +/- 15%
+    const variance = 0.15;
+    const low = Math.floor(dmg * (1 - variance));
+    const high = Math.floor(dmg * (1 + variance));
+    return clamp(randInt(low, high), 0, 9999);
+  }
+
+  function enemyAttack() {
+    const e = state.enemy;
+    const { minAtk, maxAtk } = e;
+    const dmg = randInt(minAtk, maxAtk);
+    state.player.hp = clamp(state.player.hp - dmg, 0, state.player.maxHp);
+    logLine(`<b>${e.name}</b> attaque → <span class="bad">-${dmg} PV</span>.`);
+    setBars();
+  }
+
+  function bossToggleImmunity() {
+    // Boss alterne immunité Physique/Magique à chaque tour.
+    const e = state.enemy;
+    e.immunities.clear();
+    state.bossAltMagicImmune = !state.bossAltMagicImmune;
+    if (state.bossAltMagicImmune) {
+      e.immunities.add(TYPES.MAGIC);
+      logLine(`<b>${e.name}</b> devient <span class="warn">immunisé à la Magie</span> ce tour.`, 'warn');
+    } else {
+      e.immunities.add(TYPES.PHYSICAL);
+      logLine(`<b>${e.name}</b> devient <span class="warn">immunisé au Physique</span> ce tour.`, 'warn');
+    }
+    setEnemyInfo();
+  }
+
+  function applyPlayerAction(kind) {
+    if (!state.canAct) return;
+    const p = state.player;
+    const e = state.enemy;
+
+    // Boss: ajuster l'immunité au début du tour ennemi? On le fait au début du tour du joueur pour rendre lisible.
+    if (e.key === 'fallenPriest') {
+      bossToggleImmunity();
+    }
+
+    let actionDone = false;
+
+    if (kind === 'attack') {
+      const dmg = computeDamage(p.sword.base, TYPES.PHYSICAL, e);
+      if (dmg === 0 && isImmune(e, TYPES.PHYSICAL)) {
+        logLine(`Ton attaque à l’épée est annulée par l’<b>immunité Physique</b> de <b>${e.name}</b>.`, 'warn');
+      } else {
+        e.hp = clamp(e.hp - dmg, 0, e.maxHp);
+        logLine(`Tu frappes à l’épée → <span class="good">-${dmg} PV</span> à <b>${e.name}</b>.`, 'good');
+      }
+      actionDone = true;
+    }
+
+    if (kind === 'fire' || kind === 'ice' || kind === 'bolt' || kind === 'heal') {
+      const spell = p.spells[kind];
+      if (p.mp < spell.cost) {
+        logLine(`PM insuffisants pour <b>${spell.name}</b>.`, 'warn');
+      } else {
+        p.mp -= spell.cost;
+        if (kind === 'heal') {
+          const before = p.hp;
+          p.hp = clamp(p.hp + spell.heal, 0, p.maxHp);
+          const healed = p.hp - before;
+          logLine(`Tu lances <b>${spell.name}</b> → <span class="good">+${healed} PV</span>.`, 'good');
+        } else {
+          // Sort offensif
+          const type = (kind === 'fire') ? TYPES.FIRE : (kind === 'ice') ? TYPES.ICE : TYPES.LIGHTNING;
+          // Les sorts sont catégorisés aussi "magie" pour le boss (immunité générique)
+          const effectiveType = isImmune(e, TYPES.MAGIC) ? TYPES.MAGIC : type; // check d’abord immunité "magie"
+          if (isImmune(e, TYPES.MAGIC)) {
+            logLine(`<b>${e.name}</b> est <b>immunisé à la Magie</b> → sort annulé.`, 'warn');
+          } else {
+            const dmg = computeDamage(spell.base, type, e);
+            if (dmg === 0 && isImmune(e, type)) {
+              logLine(`${spell.name} est annulé par l’<b>immunité ${typeLabel(type)}</b> de <b>${e.name}</b>.`, 'warn');
+            } else {
+              e.hp = clamp(e.hp - dmg, 0, e.maxHp);
+              logLine(`Tu lances <b>${spell.name}</b> → <span class="good">-${dmg} PV</span> à <b>${e.name}</b>.`, 'good');
+            }
+          }
+        }
+        actionDone = true;
+      }
+    }
+
+    setBars();
+
+    if (e.hp <= 0) {
+      // Victoire sur cet étage
+      logLine(`<b>${e.name}</b> est vaincu !`, 'good');
+      setActionEnabled(false);
+      if (state.floor < 10) {
+        // Récupération partielle
+        const healAmt = Math.floor(state.player.maxHp * 0.30);
+        const mpAmt = Math.floor(state.player.maxMp * 0.50);
+        state.player.hp = clamp(state.player.hp + healAmt, 0, state.player.maxHp);
+        state.player.mp = clamp(state.player.mp + mpAmt, 0, state.player.maxMp);
+        setBars();
+        logLine(`Tu récupères <span class="good">+${healAmt} PV</span> et <span class="good">+${mpAmt} PM</span> avant de monter.`, 'good');
+        showNextButton(true);
+      } else {
+        logLine(`<b>Tu as conquis la Tour !</b>`, 'good');
+        showRetryButton(true);
+      }
+      return;
+    }
+
+    if (actionDone) {
+      // Tour de l'ennemi
+      setActionEnabled(false);
+      setTimeout(() => {
+        enemyAttack();
+        if (state.player.hp <= 0) {
+          logLine(`<b>Tu es vaincu…</b>`, 'bad');
+          setActionEnabled(false);
+          showRetryButton(true);
+          return;
+        }
+        setActionEnabled(true);
+      }, 450);
+    }
+  }
+
+  // ---------- Création des ennemis ----------
+  function buildEnemyForFloor(floor) {
+    if (floor === 10) {
+      const t = bossTemplate();
+      return {
+        key: t.key,
+        name: t.name,
+        maxHp: t.maxHp,
+        hp: t.maxHp,
+        minAtk: t.minAtk,
+        maxAtk: t.maxAtk,
+        immunities: new Set(), // sera alternée
+        resists: { ...t.resists }
+      };
+    }
+
+    const pool = enemyTemplates();
+    const pick = pool[randInt(0, pool.length - 1)];
+    const { hpScale, atkScale } = scaleByFloor(pick.maxHp, floor);
+
+    // Mini boost à l’étage 9
+    const bossy = (floor === 9) ? 1.5 : 1.0;
+
+    const maxHp = Math.floor(pick.maxHp * hpScale * bossy);
+    const minAtk = Math.floor(pick.minAtk * atkScale * bossy);
+    const maxAtk = Math.floor(pick.maxAtk * atkScale * bossy);
+
+    return {
+      key: pick.key,
+      name: pick.name + ((floor === 9) ? ' (Élite)' : ''),
+      maxHp, hp: maxHp,
+      minAtk, maxAtk,
+      immunities: new Set(Array.from(pick.immunities)),
+      resists: { ...(pick.resists || {}) }
+    };
+  }
+
+  // ---------- Flux ----------
+  function startRun() {
+    state.floor = 1;
+    state.player = JSON.parse(JSON.stringify(playerBase));
+    state.enemy = buildEnemyForFloor(state.floor);
+    state.bossAltMagicImmune = false;
+    el.log.innerHTML = '';
+    logLine(`Tu entres dans la tour. <b>Étage ${state.floor}</b> — <b>${state.enemy.name}</b> apparaît !`);
+    updateFloorUI();
+    setActionEnabled(true);
+    showNextButton(false);
+    showRetryButton(false);
+  }
+
+  function nextFloor() {
+    state.floor++;
+    if (state.floor > 10) return;
+    state.enemy = buildEnemyForFloor(state.floor);
+    state.bossAltMagicImmune = false;
+    showNextButton(false);
+    setActionEnabled(true);
+        logLine(`<b>Étage ${state.floor}</b> — <b>${state.enemy.name}</b> apparaît !`);
+    updateFloorUI();
+    setBars();
+  }
+
+  // ---------- Événements ----------
+  el.btnAttack.addEventListener('click', () => applyPlayerAction('attack'));
+  el.btnFire.addEventListener('click', () => applyPlayerAction('fire'));
+  el.btnIce.addEventListener('click', () => applyPlayerAction('ice'));
+  el.btnLightning.addEventListener('click', () => applyPlayerAction('bolt'));
+  el.btnHeal.addEventListener('click', () => applyPlayerAction('heal'));
+  el.btnNext.addEventListener('click', () => {
+    nextFloor();
+  });
+  el.btnRetry.addEventListener('click', () => {
+    startRun();
+  });
+
+  // ---------- Lancer la partie ----------
+  startRun();
+
+})();
+</script>
+</body>
+</html>
