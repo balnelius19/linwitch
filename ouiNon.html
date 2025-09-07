@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Oracle Oui/Non Lunaire — Bimodal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1220; --panel: #171a2b; --accent: #7dd3fc; --text: #e5e7eb; --muted: #9ca3af;
+      --danger: #fca5a5; --ok: #86efac; --warn: #fde68a; --btn: #1f6feb; --btn-hover: #1a5fd1;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
+      background: radial-gradient(1200px 700px at 20% 10%, #1b2140 0%, var(--bg) 60%);
+      color: var(--text); display: grid; place-items: center; padding: 24px;
+    }
+    .card {
+      width: min(780px, 100%); background: linear-gradient(180deg, #1b1f35 0%, var(--panel) 100%);
+      border: 1px solid #232844; border-radius: 16px; padding: 20px 20px 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+    h1 {
+      margin: 0 0 6px; font-size: 22px; letter-spacing: 0.3px; font-weight: 700;
+      background: linear-gradient(90deg, #c4d0ff, #7dd3fc); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    p.sub { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: 10px; }
+    input[type="text"] {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid #2a3157;
+      background: #0f1326; color: var(--text); font-size: 15px; outline: none;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.02);
+    }
+    button {
+      padding: 12px 16px; border-radius: 10px; border: 1px solid #2a3157;
+      background: var(--btn); color: #fff; font-weight: 600; cursor: pointer; font-size: 15px;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+    button:hover { background: var(--btn-hover); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.6; cursor: not-allowed; background: #2b3457 !important; }
+    .status {
+      display: flex; gap: 10px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--muted); flex-wrap: wrap;
+    }
+    .pill {
+      border: 1px solid #2a3157; background: #0f1326; padding: 6px 10px; border-radius: 999px; font-size: 12px;
+    }
+    .pill.ok { color: var(--ok); border-color: #264d3a; background: #0f1a16; }
+    .pill.warn { color: #facc15; border-color: #4b3a12; background: #171307; }
+    .pill.danger { color: var(--danger); border-color: #512526; background: #1a0f10; }
+    .result {
+      margin-top: 16px; border: 1px solid #2a3157; background: #0f1326; border-radius: 12px; padding: 14px;
+    }
+    .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .kv { background: #0c1022; border: 1px solid #22284a; border-radius: 10px; padding: 10px; }
+    .kv b { color: #c7d2fe; font-weight: 700; }
+    .big {
+      font-size: 24px; font-weight: 800; margin: 6px 0 2px;
+      background: linear-gradient(90deg, #a5b4fc, #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .small { color: var(--muted); font-size: 12px; }
+    .footer { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+    code { background: #0c1022; padding: 2px 6px; border-radius: 6px; border: 1px solid #232844; }
+    @media (max-width: 540px) { .kvs { grid-template-columns: 1fr; } .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🔮 Oracle oui/non lunaire</h1>
+    <p class="sub">
+      — Distribution bimodale: pics vers 30% et 70%, creux vers 50% (0/100 ultra-rares).<br>
+      — Limite: 10 utilisations par 24 h (localStorage).<br>
+      — Même question: 1 réponse par cycle lunaire, et seulement après la pleine lune.
+    </p>
+
+    <div class="row">
+      <input id="q" type="text" placeholder="Ex: Dois-je lancer ce projet ?" maxlength="300" />
+      <button id="askBtn">Consulter</button>
+    </div>
+
+    <div class="status">
+      <span id="quotaPill" class="pill">Quota: —</span>
+      <span id="lunePill" class="pill">Cycle lunaire: —</span>
+      <span id="resetPill" class="pill">Prochaine pleine lune: —</span>
+      <span id="hintPill" class="pill">Extrêmes 0/100: ultra-rares</span>
+    </div>
+
+    <div id="result" class="result" style="display:none;">
+      <div><b>Question</b></div>
+      <div id="outQ" class="small" style="margin-top:4px;"></div>
+      <div class="kvs">
+        <div class="kv">
+          <div class="small">Décision</div>
+          <div id="outDecision" class="big">—</div>
+          <div id="outConfLabel" class="small">Confiance décision</div>
+        </div>
+        <div class="kv">
+          <div class="small">% Oui</div>
+          <div id="outPctOui" class="big">—%</div>
+          <div id="outRare" class="small">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="history" class="small" style="margin-top:10px;"></div>
+
+    <div class="footer">
+      <div>Astuce: maintiens <code>Alt</code> en cliquant pour tester un tirage “ultra-rare”.</div>
+      <div>Clés localStorage: <code>oracleUsage</code>, <code>oracleQuestions</code>.</div>
+      <div style="opacity:.8">Cycle lunaire approximatif (29,530588 jours, repère astronomique fixe).</div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Config stockage & quotas ======
+    const STORAGE_KEY_USAGE = "oracleUsage";         // { arr: number[] }
+    const STORAGE_KEY_QUESTIONS = "oracleQuestions"; // { [hash]: lastCycleId }
+    const LIMIT = 10;
+    const WINDOW_MS = 24 * 60 * 60 * 1000;
+
+    // ====== Lune (approx) ======
+    // Longueur moyenne d'un mois synodique (pleine lune -> pleine lune)
+    const SYNODIC_MS = 29.530588 * 24 * 60 * 60 * 1000;
+    // Repère: pleine lune connue (UTC). Le calcul est APPROXIMATIF mais stable.
+    // 2025-08-09 10:55 UTC (exemple de repère; la précision jour/heure n'est pas critique pour la règle "jeu").
+    const REF_FULL_MOON = Date.parse("2025-08-09T10:55:00Z");
+
+    function now() { return Date.now(); }
+    function loadJSON(key) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : {}; } catch { return {}; } }
+    function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
+    function pruneWindow(arr, tNow = now()) {
+      const start = tNow - WINDOW_MS;
+      return (Array.isArray(arr) ? arr : []).filter(ts => typeof ts === "number" && ts >= start && ts <= tNow + 5_000);
+    }
+    function msToHMS(ms) {
+      if (ms == null) return "—";
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (h > 0) return `${h} h ${m} min`;
+      if (m > 0) return `${m} min ${sec}s`;
+      return `${sec}s`;
+    }
+
+    function getLunarCycleInfo(t = now()) {
+      const k = Math.floor((t - REF_FULL_MOON) / SYNODIC_MS); // ID du cycle courant
+      const lastFull = REF_FULL_MOON + k * SYNODIC_MS;
+      const nextFull = lastFull + SYNODIC_MS;
+      return { cycleId: k, lastFull, nextFull };
+    }
+
+    // ====== RNG & hashing ======
+    function hashString(str) {
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+    function mulberry32(seed) {
+      let a = seed >>> 0;
+      return function() {
+        let t = a += 0x6D2B79F5;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function getSeed(question) {
+      const base = hashString(String(question));
+      let extra = 0;
+      if (window.crypto?.getRandomValues) {
+        const buf = new Uint32Array(1);
+        crypto.getRandomValues(buf);
+        extra = buf[0] >>> 0;
+      } else {
+        extra = Math.floor(Math.random() * 0xffffffff) >>> 0;
+      }
+      return (base ^ extra) >>> 0;
+    }
+
+    // ====== Oracle: distribution bimodale (pics ~0.3 et ~0.7) ======
+    function oracle(question, forceUltraRare = false) {
+      const rng = mulberry32(getSeed(question));
+
+      // Rejection sampling sur densité bimodale: somme de 2 gaussiennes centrées en 0.3 et 0.7.
+      function drawBimodal() {
+        let x = rng(); // proposition uniforme
+        const sigma = 0.08; // largeur des pics: ajuste la "pointure" des 30/70
+        const g1 = Math.exp(-0.5 * Math.pow((x - 0.3) / sigma, 2));
+        const g2 = Math.exp(-0.5 * Math.pow((x - 0.7) / sigma, 2));
+        const weight = g1 + g2;
+
+        // Diviseur ajuste la proba d'acceptation max (affecte la profondeur du creux près de 0.5)
+        const ACCEPT_DIV = 2.5;
+        if (rng() < weight / ACCEPT_DIV) return x;
+        return drawBimodal();
+      }
+
+      let p = drawBimodal();
+
+      // Extrêmes (0/1) ultra-rares
+      const ultraRare = forceUltraRare || (rng() < 0.0005); // ~0,05%
+      if (!ultraRare) {
+        const epsilon = 0.005; // évite 0% et 100%
+        p = Math.min(1 - epsilon, Math.max(epsilon, p));
+      } else {
+        p = rng() < 0.5 ? 0 : 1;
+      }
+
+      const decision = p >= 0.5 ? "oui" : "non";
+      const pourcentageOui = Math.round(p * 100);
+      const pourcentageDecision = Math.round((decision === "oui" ? p : (1 - p)) * 100);
+
+      return {
+        decision,
+        pourcentageOui,
+        pourcentageDecision,
+        rareExtreme: (p === 0 || p === 1)
+      };
+    }
+
+    // ====== Règles: quota & règle lunaire "1 fois par cycle" ======
+    function getUsageState() {
+      const t = now();
+      const usageObj = loadJSON(STORAGE_KEY_USAGE);
+      const arr = pruneWindow(usageObj.arr || [], t);
+      // Sauvegarder propre
+      usageObj.arr = arr;
+      saveJSON(STORAGE_KEY_USAGE, usageObj);
+
+      const count = arr.length;
+      const remaining = Math.max(0, LIMIT - count);
+      let nextResetMs = null;
+      if (count >= LIMIT) {
+        const oldest = Math.min(...arr);
+        nextResetMs = (oldest + WINDOW_MS) - t;
+      }
+      return { count, remaining, nextResetMs };
+    }
+
+    // Une même question: 1 réponse par cycle lunaire, et seulement après la pleine lune.
+    // Implémentation: on calcule le cycleId courant; si la question a déjà été répondue sur ce cycleId, on bloque jusqu'à la prochaine pleine lune.
+    function canAskQuestion(question) {
+      // Quota
+      const { remaining, nextResetMs } = getUsageState();
+      if (remaining <= 0) {
+        return { ok: false, reason: `Quota épuisé (10/24h). Réessaie dans ${msToHMS(nextResetMs)}.` };
+      }
+
+      // Lune
+      const { cycleId, lastFull, nextFull } = getLunarCycleInfo();
+      const t = now();
+
+      // Optionnel: n'autoriser que "après la pleine lune" du cycle => si on est avant lastFull (arrive si réf futur), on bloque
+      if (t < lastFull) {
+        return { ok: false, reason: `Attends la prochaine pleine lune (${new Date(lastFull).toLocaleString()}).` };
+      }
+
+      const qMap = loadJSON(STORAGE_KEY_QUESTIONS); // { [hash]: lastCycleId }
+      const qHash = String(hashString(question));
+      const lastCycleForQ = qMap[qHash];
+
+      if (lastCycleForQ === cycleId) {
+        return { ok: false, reason: `Cette question a déjà reçu une réponse pour ce cycle. Réessaie après la prochaine pleine lune (dans ${msToHMS(nextFull - t)}).` };
+      }
+
+      return { ok: true, meta: { qHash, cycleId, nextFull } };
+    }
+
+    function recordUse(meta, question) {
+      // Quota
+      const usageObj = loadJSON(STORAGE_KEY_USAGE);
+      usageObj.arr = pruneWindow(usageObj.arr || []);
+      usageObj.arr.push(now());
+      saveJSON(STORAGE_KEY_USAGE, usageObj);
+
+      // Lune par question
+      const qMap = loadJSON(STORAGE_KEY_QUESTIONS);
+      qMap[meta.qHash] = meta.cycleId;
+      saveJSON(STORAGE_KEY_QUESTIONS, qMap);
+    }
+
+    // ====== UI ======
+    const qEl = document.getElementById("q");
+    const askBtn = document.getElementById("askBtn");
+    const resultEl = document.getElementById("result");
+    const outQ = document.getElementById("outQ");
+    const outDecision = document.getElementById("outDecision");
+    const outConfLabel = document.getElementById("outConfLabel");
+    const outPctOui = document.getElementById("outPctOui");
+    const outRare = document.getElementById("outRare");
+
+    const quotaPill = document.getElementById("quotaPill");
+    const lunePill = document.getElementById("lunePill");
+    const resetPill = document.getElementById("resetPill");
+    const hintPill = document.getElementById("hintPill");
+    const historyEl = document.getElementById("history");
+
+    function updateQuotaUI() {
+      const { count, remaining, nextResetMs } = getUsageState();
+      quotaPill.textContent = `Quota: ${remaining} restants (${count}/${LIMIT})`;
+      quotaPill.className = "pill " + (remaining > 3 ? "ok" : remaining > 0 ? "warn" : "danger");
+      if (nextResetMs != null) quotaPill.title = `Prochain slot dans ${msToHMS(nextResetMs)}`;
+    }
+
+    function updateLunarUI() {
+      const { cycleId, lastFull, nextFull } = getLunarCycleInfo();
+      lunePill.textContent = `Cycle #${cycleId} (depuis ${new Date(lastFull).toLocaleString()})`;
+      resetPill.textContent = `Prochaine pleine lune: ${new Date(nextFull).toLocaleString()} (${msToHMS(nextFull - now())})`;
+    }
+
+    function addHistoryEntry(question, decision, pctOui, rare) {
+      const div = document.createElement("div");
+      const time = new Date().toLocaleTimeString();
+      div.textContent = `[${time}] “${question}” → ${decision.toUpperCase()} (${pctOui}%)` + (rare ? " • tirage extrême" : "");
+      historyEl.prepend(div);
+      while (historyEl.children.length > 12) historyEl.removeChild(historyEl.lastChild);
+    }
+
+    function ask(e) {
+      const question = (qEl.value || "").trim();
+      if (!question) { qEl.focus(); return; }
+
+      const check = canAskQuestion(question);
+      if (!check.ok) { alert(check.reason); return; }
+
+      const forceUltraRare = !!(e && e.altKey);
+      const res = oracle(question, forceUltraRare);
+
+      outQ.textContent = question;
+      outDecision.textContent = res.decision.toUpperCase();
+      outDecision.style.color = res.decision === "oui" ? "#86efac" : "#fca5a5";
+      outConfLabel.textContent = `Confiance ${res.decision}`;
+      outPctOui.textContent = `${res.pourcentageOui}%`;
+      outRare.textContent = res.rareExtreme ? "Tirage extrême (0% ou 100%)" : "Tirage bimodal (pics ~30/70, creux ~50)";
+      resultEl.style.display = "";
+
+      recordUse(check.meta, question);
+      updateQuotaUI();
+      updateLunarUI();
+      addHistoryEntry(question, res.decision, res.pourcentageOui, res.rareExtreme);
+      qEl.select();
+    }
+
+    askBtn.addEventListener("click", ask);
+    qEl.addEventListener("keydown", (e) => { if (e.key === "Enter") ask(e); });
+
+    // Init UI
+    updateQuotaUI();
+    updateLunarUI();
+    hintPill.title = "Distribution à deux pics (≈30% et 70%). 0% et 100% restent ultra-rares (~0,05%).";
+  </script>
+</body>
+</html>
