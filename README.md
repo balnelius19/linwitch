@@ -9,6 +9,9 @@
 En téléchargeant le dossier **OS js**, vous obtenez l’ensemble du logiciel en version JavaScript.  
 Des fichiers complémentaires seront ajoutés progressivement, avant d’être intégrés pour certains dans le dossier principal.
 
+La branche inintegre présente les logiciels qui seront intégré prochainement après avoir été finalisé .
+
+
 ---
 
 ## 🌌 Aperçu du projet
