@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Platformer JS - Pièces, Plateformes et Pièges</title>
+  <style>
+    canvas { background: #eee; display: block; margin: auto; border: 1px solid #333; }
+    body { text-align: center; font-family: sans-serif; }
+  </style>
+</head>
+<body>
+<h2 id="info">Niveau 1 | Morts : 0 | Pièces : 0/0</h2>
+<canvas id="game" width="800" height="400"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const info = document.getElementById("info");
+
+let player = { x: 50, y: 300, w: 30, h: 40, vx: 0, vy: 0, onGround: false };
+let gravity = 0.8;
+let keys = {};
+let deaths = 0;
+let currentLevel = 0;
+let nextAction = null;
+
+let platforms = [], spikes = [], goal = {}, coins = [];
+
+const levels = [];
+for (let i = 0; i < 10; i++) {
+  // Sol
+  let plats = [
+    { x: 0, y: 360, w: 800, h: 40 }
+  ];
+
+  // Plateformes intermédiaires (plus nombreuses avec le niveau)
+  for (let p = 0; p < i + 2; p++) {
+    plats.push({
+      x: 100 + p * 120,
+      y: 300 - (p % 3) * 40,
+      w: 80,
+      h: 20
+    });
+  }
+
+  // Pièges (plus nombreux avec le niveau)
+  let spikesArr = [];
+  for (let s = 0; s < Math.floor(i / 2) + 1; s++) {
+    spikesArr.push({
+      x: 150 + s * 150,
+      y: 340,
+      w: 40,
+      h: 20
+    });
+  }
+
+  // Objectif
+  let goalObj = { x: 750, y: 320, w: 30, h: 40 };
+
+  // Pièces (nombre = niveau + 1)
+  let coinList = [];
+  for (let c = 0; c < i + 1; c++) {
+    coinList.push({
+      x: 120 + c * 60,
+      y: 280 - (c % 2) * 40,
+      w: 15,
+      h: 15,
+      collected: false
+    });
+  }
+
+  levels.push({ platforms: plats, spikes: spikesArr, goal: goalObj, coins: coinList });
+}
+
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
+
+function loadLevel(index) {
+  const lvl = levels[index];
+  platforms = lvl.platforms;
+  spikes = lvl.spikes;
+  goal = lvl.goal;
+  coins = lvl.coins.map(c => ({...c})); // copie pour reset
+  player.x = 50;
+  player.y = 300;
+  player.vx = 0;
+  player.vy = 0;
+  updateInfo();
+}
+
+function updateInfo() {
+  let collected = coins.filter(c => c.collected).length;
+  info.textContent = `Niveau ${currentLevel + 1} | Morts : ${deaths} | Pièces : ${collected}/${coins.length}`;
+}
+
+function loop() {
+  // Exécuter action prévue
+  if (nextAction) {
+    if (nextAction === "restart") {
+      loadLevel(currentLevel);
+    } else if (nextAction === "next") {
+      currentLevel++;
+      if (currentLevel < levels.length) {
+        loadLevel(currentLevel);
+      } else {
+        alert(`Bravo ! Tu as fini les 10 niveaux.\nTotal morts : ${deaths}`);
+        currentLevel = 0;
+        deaths = 0;
+        loadLevel(0);
+      }
+    }
+    nextAction = null;
+  }
+
+  // Mouvements
+  player.vx = 0;
+  if (keys["ArrowLeft"]) player.vx = -4;
+  if (keys["ArrowRight"]) player.vx = 4;
+  if (keys["Space"] && player.onGround) {
+    player.vy = -12;
+    player.onGround = false;
+  }
+
+  player.vy += gravity;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Collisions plateformes
+  player.onGround = false;
+  for (let plat of platforms) {
+    if (player.x < plat.x + plat.w &&
+        player.x + player.w > plat.x &&
+        player.y < plat.y + plat.h &&
+        player.y + player.h > plat.y) {
+      if (player.vy > 0) {
+        player.y = plat.y - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+  }
+
+  // Collisions pièces
+  for (let coin of coins) {
+    if (!coin.collected &&
+        player.x < coin.x + coin.w &&
+        player.x + player.w > coin.x &&
+        player.y < coin.y + coin.h &&
+        player.y + player.h > coin.y) {
+      coin.collected = true;
+      updateInfo();
+    }
+  }
+
+  // Collisions spikes
+  for (let spike of spikes) {
+    if (player.x < spike.x + spike.w &&
+        player.x + player.w > spike.x &&
+        player.y < spike.y + spike.h &&
+        player.y + player.h > spike.y) {
+      deaths++;
+      nextAction = "restart";
+    }
+  }
+
+  // Objectif (si toutes pièces collectées)
+  let allCoinsCollected = coins.every(c => c.collected);
+  if (allCoinsCollected &&
+      player.x < goal.x + goal.w &&
+      player.x + player.w > goal.x &&
+      player.y < goal.y + goal.h &&
+      player.y + player.h > goal.y) {
+    nextAction = "next";
+  }
+
+  // Tomber hors écran
+  if (player.y > canvas.height) {
+    deaths++;
+    nextAction = "restart";
+  }
+
+  // Dessin
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "black";
+  for (let plat of platforms) ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+  ctx.fillStyle = "red";
+  for (let spike of spikes) ctx.fillRect(spike.x, spike.y, spike.w, spike.h);
+  ctx.fillStyle = "limegreen";
+  ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+  ctx.fillStyle = "gold";
+  for (let coin of coins) {
+    if (!coin.collected) ctx.fillRect(coin.x, coin.y, coin.w, coin.h);
+  }
+  ctx.fillStyle = "dodgerblue";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+
+  requestAnimationFrame(loop);
+}
+
+loadLevel(0);
+loop();
+</script>
+</body>
+</html>
