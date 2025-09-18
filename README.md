@@ -16,25 +16,18 @@ Des fichiers complémentaires seront ajoutés progressivement, avant d’être i
 LinWitch est encore en phase de gestation. Il contient déjà plusieurs composants magiques :
 
 - 🔮 `linwitch.js` : cœur du système, moteur d’incantation
-- 🃏 `tarot.js` : module de tirage divinatoire
-- 📜 `oracleMystique.js` : logique des oracles
 - 🎨 `style.css` : ambiance visuelle
 - 🖼️ `sorciere.png` : illustration mystique
 - 📅 `fetes.json` & `solstices-data.js` : données calendaires occultes
 - 🧪 `index.html` : portail principal du grimoire
 - 🔮 `oracle.html` : un oracle supplémentaire
-- 🔮 `oracle2.html` : un oracle supplémentaire
-- 🌌 `pong.html` : un jeu pong
-  et bien d'autres petits logiciels dont un de phytothérapie 
+
 
 ---
 
 ## 🔍 Fichiers oraculaires
 
-En dehors du fichier principal , deux fichiers HTML servent de portails spécifiques :
-
-- 🌙 `oracle1.html` : interface pour l’oracle en mot simple
-- ☀️ `oracle2.html` : interface pour l’oracle en phrases
+En dehors du fichier principal , de nombreux fichiers non finalisés sont disponible dans la branche inintegre:
 
 > Ces fichiers peuvent être ouverts directement dans un navigateur pour tester les modules oraculaires.
 
@@ -60,27 +53,6 @@ Ensuite, ouvrez le fichier HTML de votre choix dans votre navigateur pour utilis
 - 📁 Système de fichiers ésotérique *(en projet)*
 - 🐈 Invocation de familiers numériques *(en projet)*
 - 🌌 Effets visuels rituels *(en projet)*
-
----
-
-## 📁 Arborescence actuelle
-
-> Mise à jour à chaque version majeure
-
-```plaintext
-LinWitch/
-├── fetes.json
-├── index.html
-├── linwitch.js
-├── oracleMystique.js
-├── solstices-data.js
-├── sorciere.png
-├── style.css
-├── tarot.js
-oracle1.html
-oracle2.html
-README.md
-```
 
 ---
 
