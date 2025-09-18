@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Casse-brique – Balle losange</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      display: grid;
+      place-items: center;
+      height: 100vh;
+      background: radial-gradient(1200px 800px at 50% 40%, #1a1d29, #0d0f16);
+      color: #e9eef5;
+    }
+    .wrap {
+      display: grid;
+      gap: 10px;
+      justify-items: center;
+    }
+    canvas {
+      background: linear-gradient(180deg,#0f1320,#0b0e18 60%);
+      border: 2px solid #2c3553;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,.5), inset 0 0 100px rgba(255,255,255,.03);
+    }
+    .hud {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      font-weight: 600;
+      letter-spacing: .3px;
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    }
+    .hud span.label { opacity: .75; font-weight: 500; }
+    .hint { opacity: .75; font-size: .95rem; }
+    a.btn {
+      color: #e9eef5;
+      text-decoration: none;
+      font-weight: 600;
+      border: 1px solid #2c3553;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #1a2033;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <div><span class="label">Score:</span> <span id="score">0</span></div>
+      <div><span class="label">Niveau:</span> <span id="level">1 / 4</span></div>
+      <div class="hint">← → pour bouger • Espace pour lancer</div>
+    </div>
+    <canvas id="game" width="900" height="640" aria-label="Jeu casse-brique"></canvas>
+    <div class="hud">
+      <a class="btn" href="#" id="restart">Recommencer</a>
+    </div>
+  </div>
+
+  <script>
+    // ------- Config de base -------
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // HUD
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    document.getElementById('restart').addEventListener('click', (e) => {
+      e.preventDefault();
+      resetGame(true);
+    });
+
+    // ------- Entrées -------
+    const keys = { left:false, right:false };
+    document.addEventListener('keydown', (e)=>{
+      if (e.code === 'ArrowLeft') keys.left = true;
+      if (e.code === 'ArrowRight') keys.right = true;
+      if (e.code === 'Space') {
+        if (state.ready) launchBall();
+      }
+    });
+    document.addEventListener('keyup', (e)=>{
+      if (e.code === 'ArrowLeft') keys.left = false;
+      if (e.code === 'ArrowRight') keys.right = false;
+    });
+    // Contrôle souris (optionnel)
+    canvas.addEventListener('mousemove', (e)=>{
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      paddle.x = clamp(mx - paddle.w/2, 0, W - paddle.w);
+      if (state.ready) attachBallToPaddle();
+    });
+
+    // ------- Outils math -------
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const rand = (a,b)=> a + Math.random()*(b-a);
+
+    // ------- Paddle -------
+    const paddle = {
+      w: 120, h: 16,
+      x: (W-120)/2,
+      y: H - 48,
+      speed: 520,
+      color: '#7cc6ff'
+    };
+
+    // ------- Balle (losange) -------
+    // On dessine un carré tourné de 45°, mais on collisionne avec un cercle d'enveloppe.
+    const ball = {
+      x: 0, y:0,
+      vx: 0, vy: 0,
+      // demi-côté visuel du carré (losange)
+      half: 10,
+      // rayon collision (du cercle circonscrit au carré): half * sqrt(2)
+      get r(){ return this.half * Math.SQRT2; },
+      color: '#ffd166',
+      speedBase: 360, // vitesse de base (augmentera selon le niveau)
+    };
+
+    function drawDiamond(cx, cy, half, fill, stroke='#00000033') {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI/4);
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.rect(-half, -half, half*2, half*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ------- Briques / Niveaux -------
+    const BRICK = {
+      w: 90, h: 28, gap: 8,
+      colorRow: ['#f94144','#f3722c','#f8961e','#f9844a','#f9c74f','#90be6d','#43aa8b','#577590']
+    };
+
+    // Chaque niveau: matrice (rows x cols) de 0/1
+    // La vitesse augmente légèrement à chaque niveau.
+    const LEVELS = [
+      {
+        speedMul: 1.00,
+        grid: [
+          [1,1,1,1,1,1,1,1],
+          [1,1,1,1,1,1,1,1],
+          [1,1,1,1,1,1,1,1],
+        ]
+      },
+      {
+        speedMul: 1.10,
+        grid: [
+          [1,0,1,0,1,0,1,0],
+          [0,1,0,1,0,1,0,1],
+          [1,0,1,0,1,0,1,0],
+          [0,1,0,1,0,1,0,1],
+        ]
+      },
+      {
+        speedMul: 1.20,
+        grid: [
+          [1,1,1,1,1,1,1,1],
+          [1,1,1,1,1,1,1,1],
+          [0,1,1,1,1,1,1,0],
+          [0,0,1,1,1,1,0,0],
+          [0,0,0,1,1,0,0,0],
+        ]
+      },
+      {
+        speedMul: 1.35,
+        grid: [
+          [1,1,1,1,1,1,1,1],
+          [1,0,0,0,0,0,0,1],
+          [1,0,1,1,1,1,0,1],
+          [1,0,1,1,1,1,0,1],
+          [1,0,0,1,1,0,0,1],
+          [1,1,1,1,1,1,1,1],
+        ]
+      }
+    ];
+
+    let bricks = []; // {x,y,w,h,alive,color}
+    let state = {
+      level: 0,
+      score: 0,
+      ready: true,   // balle posée sur le paddle, attend Espace
+      running: false,
+      won: false
+    };
+
+    function buildLevel(idx) {
+      const level = LEVELS[idx];
+      bricks = [];
+      const rows = level.grid.length;
+      const cols = level.grid[0].length;
+
+      // Centrer la grille
+      const totalW = cols*BRICK.w + (cols-1)*BRICK.gap;
+      const offsetX = (W - totalW) / 2;
+      let y = 80;
+      for (let r=0; r<rows; r++) {
+        let x = offsetX;
+        for (let c=0; c<cols; c++) {
+          if (level.grid[r][c]) {
+            bricks.push({
+              x, y, w: BRICK.w, h: BRICK.h,
+              alive: true,
+              color: BRICK.colorRow[r % BRICK.colorRow.length]
+            });
+          }
+          x += BRICK.w + BRICK.gap;
+        }
+        y += BRICK.h + BRICK.gap;
+      }
+      // Reset paddle + balle
+      paddle.x = (W - paddle.w)/2;
+      state.ready = true;
+      state.running = false;
+      state.won = false;
+      attachBallToPaddle();
+      updateHUD();
+    }
+
+    function updateHUD() {
+      scoreEl.textContent = state.score;
+      levelEl.textContent = `${state.level+1} / ${LEVELS.length}`;
+    }
+
+    function attachBallToPaddle() {
+      ball.x = paddle.x + paddle.w/2;
+      ball.y = paddle.y - 18;
+      ball.vx = 0; ball.vy = 0;
+    }
+
+    function launchBall() {
+      const angle = rand(-0.35, 0.35); // petit angle aléatoire
+      const speed = ball.speedBase * LEVELS[state.level].speedMul;
+      ball.vx = speed * Math.sin(angle);
+      ball.vy = -speed * Math.cos(angle);
+      state.ready = false;
+      state.running = true;
+    }
+
+    function resetGame(full=false) {
+      state.score = full ? 0 : state.score;
+      state.level = 0;
+      ball.speedBase = 360;
+      buildLevel(state.level);
+    }
+
+    // ------- Collision cercle-rectangle -------
+    function circleRectCollide(cx, cy, r, rect) {
+      const closestX = clamp(cx, rect.x, rect.x + rect.w);
+      const closestY = clamp(cy, rect.y, rect.y + rect.h);
+      const dx = cx - closestX;
+      const dy = cy - closestY;
+      const dist2 = dx*dx + dy*dy;
+      return { hit: dist2 < r*r, dx, dy, closestX, closestY };
+    }
+
+    // ------- Update -------
+    let last = 0;
+    function loop(ts) {
+      const dt = (ts - last)/1000 || 0;
+      last = ts;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function update(dt) {
+      // Paddle
+      if (keys.left)  paddle.x -= paddle.speed * dt;
+      if (keys.right) paddle.x += paddle.speed * dt;
+      paddle.x = clamp(paddle.x, 0, W - paddle.w);
+
+      if (state.ready) {
+        attachBallToPaddle();
+        return;
+      }
+
+      // Balle : mouvement
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      const r = ball.r;
+
+      // Murs
+      if (ball.x - r < 0)   { ball.x = r;        ball.vx *= -1; }
+      if (ball.x + r > W)   { ball.x = W - r;    ball.vx *= -1; }
+      if (ball.y - r < 0)   { ball.y = r;        ball.vy *= -1; }
+      if (ball.y - r > H) { // tombé -> replacer
+        state.ready = true;
+        attachBallToPaddle();
+        return;
+      }
+
+      // Paddle collision
+      const paddleRect = { x:paddle.x, y:paddle.y, w:paddle.w, h:paddle.h };
+      const colP = circleRectCollide(ball.x, ball.y, r, paddleRect);
+      if (colP.hit && ball.vy > 0) {
+        // Rebond avec effet selon point d'impact
+        const hitPos = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+        const speed = Math.hypot(ball.vx, ball.vy);
+        const angle = hitPos * (Math.PI/3); // -60° à +60°
+        ball.vx = speed * Math.sin(angle);
+        ball.vy = -Math.abs(speed * Math.cos(angle));
+        // Place la balle au-dessus pour éviter le recollage
+        ball.y = paddle.y - r - 0.1;
+      }
+
+      // Briques
+      let bricksLeft = 0;
+      for (const b of bricks) {
+        if (!b.alive) continue;
+        bricksLeft++;
+
+        const col = circleRectCollide(ball.x, ball.y, r, b);
+        if (!col.hit) continue;
+
+        // Déterminer la normale simple du rebond
+        const centerX = b.x + b.w/2;
+        const centerY = b.y + b.h/2;
+        const overlapX = (ball.x < centerX) ? (ball.x + r - b.x) : (b.x + b.w - (ball.x - r));
+        const overlapY = (ball.y < centerY) ? (ball.y + r - b.y) : (b.y + b.h - (ball.y - r));
+
+        if (overlapX < overlapY) {
+          ball.vx *= -1;
+          // enlever l'accrochage
+          if (ball.x < centerX) ball.x = b.x - r - 0.1; else ball.x = b.x + b.w + r + 0.1;
+        } else {
+          ball.vy *= -1;
+          if (ball.y < centerY) ball.y = b.y - r - 0.1; else ball.y = b.y + b.h + r + 0.1;
+        }
+
+        b.alive = false;
+        state.score += 50;
+        updateHUD();
+        break; // une brique par frame max
+      }
+
+      // Niveau suivant ?
+      if (bricksLeft === 0) {
+        if (state.level < LEVELS.length - 1) {
+          state.level++;
+          buildLevel(state.level);
+          // petite augmentation de la base de vitesse pour donner du peps progressif
+          ball.speedBase *= 1.05;
+        } else {
+          state.won = true;
+          state.ready = true;
+        }
+      }
+    }
+
+    // ------- Draw -------
+    function draw() {
+      // Fond
+      ctx.clearRect(0,0,W,H);
+      // Lueurs de fond
+      const grad = ctx.createRadialGradient(W/2, 120, 60, W/2, 120, 420);
+      grad.addColorStop(0, '#1b2135');
+      grad.addColorStop(1, '#0d111d');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,W,H);
+
+      // Briques
+      for (const b of bricks) {
+        if (!b.alive) continue;
+        // tuile rectangulaire
+        ctx.fillStyle = b.color;
+        roundRect(ctx, b.x, b.y, b.w, b.h, 6);
+        ctx.fill();
+        // liseré
+        ctx.strokeStyle = '#00000033';
+        ctx.stroke();
+      }
+
+      // Paddle
+      ctx.fillStyle = paddle.color;
+      roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, 8);
+      ctx.fill();
+
+      // Balle (losange)
+      drawDiamond(ball.x, ball.y, ball.half, ball.color);
+
+      // Overlays
+      ctx.font = '600 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (state.ready && !state.won) {
+        ctx.fillStyle = '#e9eef5';
+        ctx.fillText('Espace pour lancer la balle', W/2, H/2);
+      }
+      if (state.won) {
+        ctx.fillStyle = '#9be870';
+        ctx.fillText('Bravo ! Tu as fini les 4 niveaux 🎉', W/2, H/2);
+        ctx.fillStyle = '#e9eef5cc';
+        ctx.font = '500 18px system-ui, sans-serif';
+        ctx.fillText('Clique sur Recommencer pour rejouer', W/2, H/2 + 32);
+      }
+    }
+
+    // Utilitaire: rectangles arrondis
+    function roundRect(ctx, x, y, w, h, r) {
+      const rr = Math.min(r, w/2, h/2);
+      ctx.beginPath();
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y, x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x, y+h, rr);
+      ctx.arcTo(x, y+h, x, y, rr);
+      ctx.arcTo(x, y, x+w, y, rr);
+      ctx.closePath();
+    }
+
+    // Go
+    resetGame(true);
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

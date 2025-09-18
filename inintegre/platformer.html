@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Platformer 10 niveaux - Double Saut</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { margin:0; background:#121417; height:100%; }
+    canvas { display:block; margin:0 auto; background:#0e1013; image-rendering: pixelated; }
+    @font-face {
+      font-family: ui-mono;
+      src: local("Consolas"), local("Menlo"), local("Monaco");
+    }
+  </style>
+</head>
+<body>
+<canvas id="game" width="960" height="540"></canvas>
+<script>
+(() => {
+  const W = 960, H = 540;
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const TICK = 1000 / 60;
+
+  // Input handling
+  const keys = {};
+  const keyMap = {
+    left:  ["ArrowLeft","KeyA"],
+    right: ["ArrowRight","KeyD"],
+    up:    ["ArrowUp","KeyW","Space"],
+    attack:["KeyJ","KeyK","KeyF"],
+    reset: ["KeyR"]
+  };
+  window.addEventListener("keydown", e => keys[e.code] = true);
+  window.addEventListener("keyup",   e => keys[e.code] = false);
+
+  // Utils
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const intersects = (a,b) =>
+    a.x < b.x + b.w && a.x + a.w > b.x &&
+    a.y < b.y + b.h && a.y + a.h > b.y;
+
+  // Platform class
+  class Platform {
+    constructor(x,y,w,h=20){ this.x=x; this.y=y; this.w=w; this.h=h; }
+    draw(ctx){
+      ctx.fillStyle = "#2a2f39";
+      ctx.fillRect(this.x,this.y,this.w,this.h);
+      ctx.fillStyle = "#3a4150";
+      ctx.fillRect(this.x,this.y,this.w,6);
+    }
+  }
+
+  // Coin class
+  class Coin {
+    constructor(x,y){ this.x=x; this.y=y; this.w=16; this.h=16; this.collected=false; }
+    rect(){ return this; }
+    draw(ctx){
+      if(this.collected) return;
+      ctx.save();
+      ctx.translate(this.x+8,this.y+8);
+      ctx.fillStyle = "#f6c945";
+      ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = "#ffd86b";
+      ctx.fillRect(-2,-6,4,12);
+      ctx.restore();
+    }
+  }
+
+  // Weapon pickup
+  class WeaponPickup {
+    constructor(x,y){ this.x=x; this.y=y; this.w=22; this.h=10; this.taken=false; }
+    rect(){ return this; }
+    draw(ctx){
+      if(this.taken) return;
+      ctx.save();
+      ctx.translate(this.x,this.y);
+      ctx.fillStyle = "#c0c7cf";
+      ctx.fillRect(0,0,this.w,this.h);
+      ctx.fillStyle = "#7f8a96";
+      ctx.fillRect(-6,2,6,6);
+      ctx.restore();
+    }
+  }
+
+  // Enemy class
+  class Enemy {
+    constructor(x,y,leftBound,rightBound){
+      this.x = x; this.y = y; this.w = 28; this.h = 32;
+      this.vx = 1.4; this.vy = 0; this.dir = 1;
+      this.alive = true; this.onGround = false;
+      this.patrolLeft = leftBound;
+      this.patrolRight = rightBound - this.w;
+    }
+    rect(){ return this; }
+    update(platforms){
+      if(!this.alive) return;
+      // gravity
+      this.vy = clamp(this.vy + 0.7, -100, 18);
+      let prevX = this.x, prevY = this.y;
+      // vertical
+      this.y += this.vy; this.onGround = false;
+      for(const p of platforms){
+        if(intersects(this,p)){
+          if(prevY + this.h <= p.y && this.vy > 0){
+            this.y = p.y - this.h; this.vy = 0; this.onGround = true;
+          } else if(prevY >= p.y + p.h && this.vy < 0){
+            this.y = p.y + p.h; this.vy = 0;
+          }
+        }
+      }
+      // patrol bounds
+      if(this.x <= this.patrolLeft){ this.x = this.patrolLeft; this.dir = 1; }
+      if(this.x >= this.patrolRight){ this.x = this.patrolRight; this.dir = -1; }
+      // horizontal
+      this.x += this.vx * this.dir;
+      for(const p of platforms){
+        if(intersects(this,p)){
+          if(prevX + this.w <= p.x && this.dir > 0){
+            this.x = p.x - this.w; this.dir = -1;
+          } else if(prevX >= p.x + p.w && this.dir < 0){
+            this.x = p.x + p.w; this.dir = 1;
+          }
+        }
+      }
+    }
+    draw(ctx){
+      if(!this.alive) return;
+      ctx.fillStyle = "#e05d5d";
+      ctx.fillRect(this.x,this.y,this.w,this.h);
+      ctx.fillStyle = "#222";
+      ctx.fillRect(this.x+6,this.y+8,6,6);
+      ctx.fillRect(this.x+this.w-12,this.y+8,6,6);
+    }
+  }
+
+  // Player class with double jump
+  class Player {
+    constructor(){ this.reset(); }
+    reset(keepSword=true){
+      this.x = 40; this.y = H - 120;
+      this.w = 26; this.h = 34;
+      this.vx = 0; this.vy = 0;
+      this.onGround = false; this.dir = 1;
+      this.health = 3; this.invul = 0;
+      if(!keepSword) this.hasSword = false;
+      this.attackTimer = 0; this.attackCooldown = 0;
+      this.totalCoins = 0;
+      this.jumpCount = 0;          // double jump counter
+    }
+    rect(){ return this; }
+    getAttackRect(){
+      const len = 32;
+      return this.dir > 0
+        ? { x: this.x + this.w, y: this.y + 6, w: len, h: this.h - 12 }
+        : { x: this.x - len,   y: this.y + 6, w: len, h: this.h - 12 };
+    }
+    update(input, platforms, coins, enemies, weapon, goal){
+      // horizontal input
+      if(input.left && !input.right){
+        this.vx = clamp(this.vx - 0.8, -4.2, 4.2); this.dir = -1;
+      } else if(input.right && !input.left){
+        this.vx = clamp(this.vx + 0.8, -4.2, 4.2); this.dir = 1;
+      } else {
+        this.vx *= 0.8;
+        if(Math.abs(this.vx) < 0.05) this.vx = 0;
+      }
+
+      // double jump logic
+      if(input.up && this.jumpCount < 2){
+        this.vy = -15;
+        this.onGround = false;
+        this.jumpCount++;
+      }
+
+      // gravity & movement
+      this.vy = clamp(this.vy + 0.85, -100, 22);
+      let prevX = this.x, prevY = this.y;
+      this.y += this.vy; this.onGround = false;
+
+      for(const p of platforms){
+        if(intersects(this,p)){
+          if(prevY + this.h <= p.y && this.vy > 0){
+            this.y = p.y - this.h; this.vy = 0;
+            this.onGround = true; this.jumpCount = 0;  // reset jumps on landing
+          } else if(prevY >= p.y + p.h && this.vy < 0){
+            this.y = p.y + p.h; this.vy = 0;
+          }
+        }
+      }
+
+      this.x += this.vx;
+      for(const p of platforms){
+        if(intersects(this,p)){
+          if(prevX + this.w <= p.x && this.vx > 0){
+            this.x = p.x - this.w; this.vx = 0;
+          } else if(prevX >= p.x + p.w && this.vx < 0){
+            this.x = p.x + p.w; this.vx = 0;
+          }
+        }
+      }
+
+      // world bounds & fall death
+      this.x = clamp(this.x, -200, W - this.w + 200);
+      if(this.y > H + 200) this.health = 0;
+
+      // collect coins
+      coins.forEach(c => {
+        if(!c.collected && intersects(this,c)){
+          c.collected = true;
+          this.totalCoins++;
+        }
+      });
+
+      // pick weapon
+      if(weapon && !weapon.taken && intersects(this,weapon)){
+        weapon.taken = true;
+        this.hasSword = true;
+      }
+
+      // attack
+      if(this.hasSword && input.attack && this.attackCooldown <= 0 && this.attackTimer <= 0){
+        this.attackTimer = 10; this.attackCooldown = 18;
+      }
+      if(this.attackTimer > 0){
+        this.attackTimer--;
+        const hit = this.getAttackRect();
+        enemies.forEach(e => {
+          if(e.alive && intersects(hit,e)) e.alive = false;
+        });
+      }
+      if(this.attackCooldown > 0) this.attackCooldown--;
+
+      // damage & invulnerability
+      if(this.invul > 0) this.invul--;
+      else {
+        enemies.forEach(e => {
+          if(e.alive && intersects(this,e)){
+            this.health--; this.invul = 60;
+            this.vx = (this.x + this.w/2 < e.x + e.w/2) ? -5 : 5;
+            this.vy = -8;
+          }
+        });
+      }
+    }
+    draw(ctx){
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(this.x+2, this.y+this.h-4, this.w-4, 6);
+
+      // body
+      if(this.invul % 6 < 3){
+        ctx.fillStyle = "#5db0e0";
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+
+        // headband
+        ctx.fillStyle = "#2c6e91";
+        ctx.fillRect(this.x, this.y, this.w, 6);
+
+        // eye
+        ctx.fillStyle = "#0b1a24";
+        const eyeX = this.dir > 0 ? this.x + this.w - 10 : this.x + 4;
+        ctx.fillRect(eyeX, this.y + 10, 6, 6);
+      }
+
+      // sword
+      if(this.hasSword){
+        ctx.fillStyle = "#cdd3db";
+        const sx = this.dir > 0 ? this.x + this.w : this.x - 12;
+        ctx.fillRect(sx, this.y + 12, 12, 4);
+      }
+
+      // attack arc
+      if(this.attackTimer > 0){
+        const r = this.getAttackRect();
+        ctx.fillStyle = "rgba(255,255,255,0.12)";
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+      }
+    }
+  }
+
+  // Level generation
+  function generateLevel(n){
+    const platforms = [];
+    const coins     = [];
+    const enemies   = [];
+    let weapon      = null;
+
+    // ground
+    platforms.push(new Platform(0, H-30, W, 30));
+
+    // escalate difficulty
+    const numPlat = 6 + n;
+    const stepY   = 26;
+    let x = 60, y = H - 140;
+
+    for(let i = 0; i < numPlat; i++){
+      const w = 120 + ((i*37 + n*23) % 80);
+      y = clamp(y - stepY + ((i%3===0 ? 10 : -6)), 140, H - 140);
+      x = clamp(x + 70 + (i%2===0 ? 50 : 20), 40, W - w - 40);
+
+      const p = new Platform(x, y, w, 18);
+      platforms.push(p);
+
+      // coin placement
+      if(i % 2 === 0 || i % 3 === 0){
+        const cx = x + Math.min(w-18, 20 + (i*17) % Math.max(20, w-36));
+        coins.push(new Coin(cx, y - 18));
+      }
+
+      // enemy on some platforms
+      if(i >= 2 && i % 2 === 1){
+        const ex = x + 10 + (i*13 % (w-40));
+        enemies.push(new Enemy(ex, y - 32, x, x + w));
+      }
+    }
+
+    // goal on last platform
+    const last = platforms[platforms.length - 1];
+    const goal = {
+      x: last.x + last.w - 30,
+      y: last.y - 40,
+      w: 22, h: 40
+    };
+
+    // weapon on levels 2,5,8
+    if([2,5,8].includes(n)){
+      const midIdx = Math.max(1, Math.floor(platforms.length/2) - 1);
+      const mid    = platforms[midIdx];
+      weapon = new WeaponPickup(mid.x + mid.w/2 - 10, mid.y - 14);
+    }
+
+    // add extra enemies as n grows
+    const extra = Math.floor(n/2);
+    for(let i=0; i<extra; i++){
+      const pIdx = 2 + (i*2 % Math.max(3, platforms.length - 3));
+      const p    = platforms[pIdx];
+      const ex   = p.x + 12 + (i*23 % Math.max(20, p.w - 44));
+      enemies.push(new Enemy(ex, p.y - 32, p.x, p.x + p.w));
+    }
+
+    return { platforms, coins, enemies, weapon, goal };
+  }
+
+  // Game state
+  const player    = new Player();
+  let levelIndex  = 1;
+  let level       = null;
+  let totalCoins  = 0;
+  let message     = "";
+  let msgTimer    = 0;
+  let victory     = false;
+
+  function loadLevel(keepSword = true){
+    level = generateLevel(levelIndex);
+    player.reset(keepSword);
+    player.x = 40;
+    player.y = level.platforms[0].y - player.h - 2;
+    message  = `Niveau ${levelIndex}`;
+    msgTimer = 90;
+  }
+
+  function nextLevel(){
+    levelIndex++;
+    if(levelIndex > 10){
+      victory = true;
+      message = "Bravo ! Tu as fini les 10 niveaux 🎉";
+      msgTimer = 240;
+      levelIndex = 1;
+    }
+    loadLevel(true);
+  }
+
+  function restartLevel(){
+    message  = "Oups ! On réessaie…";
+    msgTimer  = 90;
+    loadLevel(true);
+  }
+
+  loadLevel(true);
+
+  function inputPressed(group){
+    return keyMap[group].some(code => keys[code]);
+  }
+
+  function update(){
+    const input = {
+      left:   inputPressed("left"),
+      right:  inputPressed("right"),
+      up:     inputPressed("up"),
+      attack: inputPressed("attack")
+    };
+
+    if(inputPressed("reset")){
+      restartLevel();
+      return;
+    }
+
+    // update enemies
+    level.enemies.forEach(e => e.update(level.platforms));
+
+    // update player
+    player.update(input, level.platforms, level.coins, level.enemies, level.weapon);
+
+    // check goal
+    if(intersects(player, level.goal)){
+      totalCoins += level.coins.filter(c => c.collected).length;
+      nextLevel();
+      return;
+    }
+
+    // death
+    if(player.health <= 0){
+      restartLevel();
+      return;
+    }
+
+    if(msgTimer > 0) msgTimer--;
+  }
+
+  function drawBackground(){
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, "#101520");
+    g.addColorStop(1, "#0b0e13");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    // mountains
+    ctx.fillStyle = "#151a24";
+    for(let i=0; i<5; i++){
+      const base = i*220 - 60;
+      ctx.beginPath();
+      ctx.moveTo(base, H-30);
+      ctx.lineTo(base+80, H-160);
+      ctx.lineTo(base+160, H-30);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function drawGoal(goal){
+    ctx.fillStyle = "#3cba54";
+    ctx.fillRect(goal.x, goal.y, 6, goal.h);
+    ctx.fillStyle = "#f04";
+    ctx.beginPath();
+    ctx.moveTo(goal.x+6, goal.y+6);
+    ctx.lineTo(goal.x+22,goal.y+14);
+    ctx.lineTo(goal.x+6, goal.y+22);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawHUD(){
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(10,10, 270, 58);
+
+    ctx.fillStyle = "#fff";
+    ctx.font = "16px ui-mono, monospace";
+    ctx.fillText(`Niveau: ${levelIndex}/10`, 20, 32);
+    const lvlCoins = level.coins.filter(c => c.collected).length;
+    ctx.fillText(`Pièces: ${lvlCoins} (Total: ${totalCoins + lvlCoins})`, 20, 52);
+
+    // health
+    for(let i=0; i<3; i++){
+      ctx.fillStyle = i < player.health ? "#ff6b6b" : "#5a3d3d";
+      ctx.fillRect(190 + i*24, 18, 18, 18);
+    }
+
+    // weapon
+    ctx.fillStyle = player.hasSword ? "#cdd3db" : "#555c66";
+    ctx.fillRect(190, 42, 26, 6);
+    ctx.fillStyle = "#9aa2ad";
+    ctx.fillText(player.hasSword ? "Arme: Oui" : "Arme: Non", 220, 52);
+
+    // message
+    if(msgTimer > 0){
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(W/2-180, H/2-24, 360, 48);
+      ctx.fillStyle = "#fff";
+      ctx.font = "20px ui-mono, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(message, W/2, H/2+6);
+      ctx.textAlign = "start";
+    }
+  }
+
+  function draw(){
+    drawBackground();
+    level.platforms.forEach(p => p.draw(ctx));
+    level.coins.forEach(c => c.draw(ctx));
+    if(level.weapon) level.weapon.draw(ctx);
+    drawGoal(level.goal);
+    level.enemies.forEach(e => e.draw(ctx));
+    player.draw(ctx);
+    drawHUD();
+  }
+
+  function loop(ts){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

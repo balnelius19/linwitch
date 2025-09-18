@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Tirage de Runes — 4 modes avec limites</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f1115; --card: #171a21; --ink: #e8e8e8; --muted: #a8b0c0;
+      --accent: #d4af37; --danger: #ff5c5c; --ok: #3ddc97;
+      --btn: #222735; --btn-hover: #2a3142; --pill: #222a36;
+    }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background: radial-gradient(1200px 600px at 20% 0%, #141824 0%, var(--bg) 60%);
+      color: var(--ink); }
+    header { padding: 28px 20px 10px; text-align: center; }
+    h1 { margin: 0 0 6px; font-weight: 700; letter-spacing: .3px; }
+    p.sub { margin: 0; color: var(--muted); }
+    .wrap { max-width: 980px; margin: 18px auto 40px; padding: 0 16px; }
+    .panel { background: var(--card); border: 1px solid #22283a; border-radius: 14px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    @media (max-width: 820px) { .grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+    button {
+      background: var(--btn); color: var(--ink); border: 1px solid #2e364b; padding: 14px 16px; border-radius: 12px;
+      cursor: pointer; text-align: left; transition: all .15s ease; position: relative; overflow: hidden;
+    }
+    button:hover { background: var(--btn-hover); transform: translateY(-1px); }
+    button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .pill { position: absolute; top: 10px; right: 10px; background: var(--pill); color: var(--muted); font-size: 12px;
+      padding: 4px 8px; border-radius: 999px; border: 1px solid #30384a; }
+    .title { font-weight: 700; margin-bottom: 6px; }
+    .desc { color: var(--muted); font-size: 14px; }
+    .out { margin-top: 18px; padding: 16px; border-radius: 12px; background: #121621; border: 1px solid #24304a; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 12px; margin-top: 12px; }
+    .card { background: #0f1420; border: 1px solid #27314a; border-radius: 12px; padding: 14px; }
+    .rune { font-size: 18px; font-weight: 700; color: var(--accent); }
+    .tag { display: inline-block; font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid #3a4664; background: #192032; color: #c9d2e3; margin-left: 6px; }
+    .pos { color: var(--ok); }
+    .neg { color: var(--danger); }
+    .slot { color: #86a4ff; font-weight: 600; margin-bottom: 6px; }
+    .muted { color: var(--muted); }
+    .warn { color: var(--danger); font-weight: 600; }
+    .hr { height: 1px; background: #22304a; margin: 14px 0; }
+    .footer { margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .counterline { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+    .counter { background: #131a28; border: 1px solid #24304a; padding: 8px 10px; border-radius: 10px; font-size: 13px; }
+    .strong { color: #f0f4ff; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tirage de Runes</h1>
+    <p class="sub">4 modes, significations incluses, limites d’utilisation automatiques</p>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="grid">
+        <button id="btn-one">
+          <div class="pill" id="pill-one">—</div>
+          <div class="title">Une rune</div>
+          <div class="desc">Un éclairage simple et net.</div>
+        </button>
+        <button id="btn-ppf">
+          <div class="pill" id="pill-ppf">—</div>
+          <div class="title">Passé — Présent — Futur</div>
+          <div class="desc">Trois positions pour comprendre le mouvement.</div>
+        </button>
+        <button id="btn-advice">
+          <div class="pill" id="pill-advice">—</div>
+          <div class="title">Conseil</div>
+          <div class="desc">Un axe d’action ou d’attitude.</div>
+        </button>
+        <button id="btn-global">
+          <div class="pill" id="pill-global">—</div>
+          <div class="title">Global</div>
+          <div class="desc">Vue d’ensemble en 5 cartes.</div>
+        </button>
+      </div>
+
+      <div class="counterline">
+        <div class="counter"><span class="strong">Une rune:</span> <span id="left-one">—</span> restant(s)/24h</div>
+        <div class="counter"><span class="strong">P-P-F:</span> <span id="left-ppf">—</span> restant(s)/24h</div>
+        <div class="counter"><span class="strong">Conseil:</span> <span id="left-advice">—</span> restant(s)/24h</div>
+        <div class="counter"><span class="strong">Global:</span> <span id="left-global">—</span> restant(s)/jour</div>
+      </div>
+
+      <div class="out" id="output">
+        Prêt à tirer. Choisis un mode.
+      </div>
+      <div class="footer">Les limites sont stockées localement dans ton navigateur (aucune donnée envoyée à un serveur).</div>
+    </div>
+  </div>
+
+  <script>
+    // =========================
+    // Données: Runes + sens
+    // =========================
+    // réversibles: la plupart, sauf celles listées "reversible: false"
+    const RUNES = [
+      { key: 'Fehu', name: 'Fehu', reversible: true,
+        up: 'Richesse, gain, ressources en mouvement, abondance à cultiver.',
+        rev: 'Perte, stagnation des ressources, attachement matériel contre-productif.' },
+      { key: 'Uruz', name: 'Uruz', reversible: true,
+        up: 'Force vitale, santé, puissance brute, opportunité d’affirmation.',
+        rev: 'Faiblesse, opportunité manquée, énergie dispersée.' },
+      { key: 'Thurisaz', name: 'Thurisaz', reversible: true,
+        up: 'Protection, seuil, tri, décision prudente avant d’agir.',
+        rev: 'Imprudence, blocage, réaction impulsive.' },
+      { key: 'Ansuz', name: 'Ansuz', reversible: true,
+        up: 'Communication, inspiration, guidance, parole claire.',
+        rev: 'Malentendu, confusion, message brouillé.' },
+      { key: 'Raidho', name: 'Raidho', reversible: true,
+        up: 'Voyage, progression, juste rythme, alignement avec la route.',
+        rev: 'Retard, détour inutile, désynchronisation.' },
+      { key: 'Kenaz', name: 'Kenaz', reversible: true,
+        up: 'Illumination, compréhension, maîtrise d’un savoir-faire.',
+        rev: 'Obscurité, manque de clarté, blocage créatif.' },
+      { key: 'Gebo', name: 'Gebo', reversible: false,
+        up: 'Don, échange équitable, alliance, partenariat harmonieux.' },
+      { key: 'Wunjo', name: 'Wunjo', reversible: true,
+        up: 'Joie, harmonie, satisfaction, cohésion.',
+        rev: 'Aliénation, frustration, joie différée.' },
+      { key: 'Hagalaz', name: 'Hagalaz', reversible: false,
+        up: 'Rupture, tempête, crise purificatrice qui force l’adaptation.' },
+      { key: 'Nauthiz', name: 'Nauthiz', reversible: true,
+        up: 'Nécessité, patience active, discipline, sobriété.',
+        rev: 'Évitement, ressentiment, pression mal gérée.' },
+      { key: 'Isa', name: 'Isa', reversible: false,
+        up: 'Gel, pause, immobilité provisoire, consolidation.' },
+      { key: 'Jera', name: 'Jera', reversible: false,
+        up: 'Récolte, cycles, effet différé, résultat juste au bon moment.' },
+      { key: 'Eihwaz', name: 'Eihwaz', reversible: false,
+        up: 'Endurance, colonne vertébrale, transformation lente mais sûre.' },
+      { key: 'Perthro', name: 'Perthro', reversible: true,
+        up: 'Mystère, hasard, destin, ce qui émerge de l’inconnu.',
+        rev: 'Secret révélé, perte au jeu, manque d’acceptation de l’incertain.' },
+      { key: 'Algiz', name: 'Algiz', reversible: true,
+        up: 'Protection, intuition aiguisée, discernement des frontières.',
+        rev: 'Vulnérabilité, imprudence, signaux ignorés.' },
+      { key: 'Sowilo', name: 'Sowilo', reversible: false,
+        up: 'Succès, vitalité, clarté solaire, intégrité.' },
+      { key: 'Tiwaz', name: 'Tiwaz', reversible: true,
+        up: 'Honneur, justice, victoire par l’effort et l’éthique.',
+        rev: 'Conflit interne, injustice subie, manque de direction.' },
+      { key: 'Berkano', name: 'Berkano', reversible: true,
+        up: 'Naissance, croissance, soin, écologie relationnelle.',
+        rev: 'Stagnation, négligence, immaturité émotionnelle.' },
+      { key: 'Ehwaz', name: 'Ehwaz', reversible: true,
+        up: 'Mouvement, coopération, confiance réciproque, véhicule.',
+        rev: 'Rupture de confiance, désaccord, inertie relationnelle.' },
+      { key: 'Mannaz', name: 'Mannaz', reversible: true,
+        up: 'Soi, humanité, coopération, réflexion lucide.',
+        rev: 'Isolement, autosabotage, ego rigide.' },
+      { key: 'Laguz', name: 'Laguz', reversible: true,
+        up: 'Flux, intuition, émotion, écoute des eaux profondes.',
+        rev: 'Confusion, débordement émotionnel, fuite.' },
+      { key: 'Ingwaz', name: 'Ingwaz', reversible: false,
+        up: 'Gestation, potentiel, clôture féconde, maturation.' },
+      { key: 'Dagaz', name: 'Dagaz', reversible: false,
+        up: 'Aube, percée, renversement bénéfique, métamorphose.' },
+      { key: 'Othala', name: 'Othala', reversible: true,
+        up: 'Héritage, foyer, frontières saines, transmission.',
+        rev: 'Attachement stérile, querelles familiales, possessions qui possèdent.' },
+    ];
+
+    // =========================
+    // Limites d’utilisation
+    // =========================
+    const LIMITS = {
+      one: { per24h: 3 },
+      ppf: { per24h: 3 },
+      advice: { per24h: 3 },
+      global: { perDay: 1 }
+    };
+
+    const STORAGE_KEY = 'runes_usage_v1';
+
+    function loadUsage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { one: [], ppf: [], advice: [], global: [] };
+        const data = JSON.parse(raw);
+        // Normalise
+        return {
+          one: Array.isArray(data.one) ? data.one : [],
+          ppf: Array.isArray(data.ppf) ? data.ppf : [],
+          advice: Array.isArray(data.advice) ? data.advice : [],
+          global: Array.isArray(data.global) ? data.global : [],
+        };
+      } catch {
+        return { one: [], ppf: [], advice: [], global: [] };
+      }
+    }
+
+    function saveUsage(usage) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(usage));
+    }
+
+    function now() { return Date.now(); }
+    function startOfLocalDay(ts = now()) {
+      const d = new Date(ts);
+      d.setHours(0,0,0,0);
+      return d.getTime();
+    }
+
+    function withinLast24h(t) {
+      return (now() - t) < 24 * 60 * 60 * 1000;
+    }
+
+    function usedToday(t) {
+      return startOfLocalDay(t) === startOfLocalDay(now());
+    }
+
+    function prune(usage) {
+      // Nettoie les entrées obsolètes pour garder le stockage léger.
+      usage.one = usage.one.filter(withinLast24h);
+      usage.ppf = usage.ppf.filter(withinLast24h);
+      usage.advice = usage.advice.filter(withinLast24h);
+      // Global: ne garde que les tirages du jour courant
+      usage.global = usage.global.filter(usedToday);
+    }
+
+    function remaining(mode) {
+      const usage = loadUsage();
+      prune(usage);
+      if (mode === 'global') {
+        // par jour
+        const used = usage.global.filter(usedToday).length;
+        return Math.max(0, LIMITS.global.perDay - used);
+      } else {
+        const used = usage[mode].filter(withinLast24h).length;
+        return Math.max(0, LIMITS[mode].per24h - used);
+      }
+    }
+
+    function canUse(mode) {
+      return remaining(mode) > 0;
+    }
+
+    function recordUse(mode) {
+      const usage = loadUsage();
+      prune(usage);
+      usage[mode].push(now());
+      saveUsage(usage);
+    }
+
+    // =========================
+    // Tirage & rendu
+    // =========================
+    function randInt(n) { return Math.floor(Math.random() * n); }
+
+    function drawRunes(count, unique=true) {
+      const pool = [...RUNES];
+      const picks = [];
+      while (picks.length < count) {
+        const idx = randInt(pool.length);
+        const rune = pool[idx];
+        if (unique) pool.splice(idx, 1); // retire pour éviter doublon
+        const reversed = rune.reversible ? Math.random() < 0.5 : false;
+        picks.push({ ...rune, reversed });
+      }
+      return picks;
+    }
+
+    function slotLabel(mode, index) {
+      if (mode === 'ppf') return ['Passé', 'Présent', 'Futur'][index] || '';
+      if (mode === 'global') return ['Thème', 'Obstacle', 'Ressource', 'Conseil', 'Potentiel'][index] || '';
+      if (mode === 'advice') return 'Conseil';
+      return 'Tirage';
+    }
+
+    function renderCards(mode, picks) {
+      const wrap = document.createElement('div');
+      wrap.className = 'cards';
+      picks.forEach((p, i) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const slot = document.createElement('div');
+        slot.className = 'slot';
+        slot.textContent = slotLabel(mode, i);
+        card.appendChild(slot);
+
+        const title = document.createElement('div');
+        title.className = 'rune';
+        title.textContent = p.name + (p.reversed ? ' (inversée)' : '');
+        const tag = document.createElement('span');
+        tag.className = 'tag ' + (p.reversed ? 'neg' : 'pos');
+        tag.textContent = p.reversed ? 'Inversée' : 'Droite';
+        title.appendChild(tag);
+        card.appendChild(title);
+
+        const desc = document.createElement('div');
+        desc.style.marginTop = '6px';
+        desc.textContent = p.reversed && p.rev ? p.rev : p.up;
+        card.appendChild(desc);
+
+        wrap.appendChild(card);
+      });
+      return wrap;
+    }
+
+    function updateCounters() {
+      const leftOne = remaining('one');
+      const leftPPF = remaining('ppf');
+      const leftAdvice = remaining('advice');
+      const leftGlobal = remaining('global');
+
+      document.getElementById('pill-one').textContent = `${leftOne} / 3`;
+      document.getElementById('pill-ppf').textContent = `${leftPPF} / 3`;
+      document.getElementById('pill-advice').textContent = `${leftAdvice} / 3`;
+      document.getElementById('pill-global').textContent = `${leftGlobal} / 1`;
+
+      document.getElementById('left-one').textContent = leftOne;
+      document.getElementById('left-ppf').textContent = leftPPF;
+      document.getElementById('left-advice').textContent = leftAdvice;
+      document.getElementById('left-global').textContent = leftGlobal;
+
+      document.getElementById('btn-one').disabled = leftOne === 0;
+      document.getElementById('btn-ppf').disabled = leftPPF === 0;
+      document.getElementById('btn-advice').disabled = leftAdvice === 0;
+      document.getElementById('btn-global').disabled = leftGlobal === 0;
+    }
+
+    function messageLimit(mode) {
+      if (mode === 'global') {
+        return 'Limite atteinte: 1 tirage global par jour. Réessaie demain.';
+      }
+      return 'Limite atteinte: 3 tirages par 24h pour ce mode. Patiente un peu avant de retenter.';
+    }
+
+    function setOutputContent(node) {
+      const out = document.getElementById('output');
+      out.innerHTML = '';
+      out.appendChild(node);
+    }
+
+    function setOutputText(html) {
+      const out = document.getElementById('output');
+      out.innerHTML = html;
+    }
+
+    function doDraw(mode) {
+      if (!canUse(mode)) {
+        setOutputText(`<span class="warn">${messageLimit(mode)}</span>`);
+        return;
+      }
+      recordUse(mode);
+      updateCounters();
+
+      let picks = [];
+      if (mode === 'one') picks = drawRunes(1);
+      else if (mode === 'ppf') picks = drawRunes(3);
+      else if (mode === 'advice') picks = drawRunes(1);
+      else if (mode === 'global') picks = drawRunes(5);
+
+      const container = document.createElement('div');
+      const head = document.createElement('div');
+      head.innerHTML = `<strong>${mode === 'one' ? 'Tirage: Une rune' :
+                                 mode === 'ppf' ? 'Tirage: Passé — Présent — Futur' :
+                                 mode === 'advice' ? 'Tirage: Conseil' :
+                                 'Tirage: Global (5 runes)'}</strong>`;
+      container.appendChild(head);
+
+      const hr = document.createElement('div'); hr.className = 'hr'; container.appendChild(hr);
+
+      container.appendChild(renderCards(mode, picks));
+
+      const foot = document.createElement('div'); foot.className = 'footer';
+      foot.textContent = 'Les significations sont concises; laisse résonner avec ta situation.';
+      container.appendChild(foot);
+
+      setOutputContent(container);
+    }
+
+    // =========================
+    // Liaison UI
+    // =========================
+    document.getElementById('btn-one').addEventListener('click', () => doDraw('one'));
+    document.getElementById('btn-ppf').addEventListener('click', () => doDraw('ppf'));
+    document.getElementById('btn-advice').addEventListener('click', () => doDraw('advice'));
+    document.getElementById('btn-global').addEventListener('click', () => doDraw('global'));
+    updateCounters();
+  </script>
+</body>
+</html>
